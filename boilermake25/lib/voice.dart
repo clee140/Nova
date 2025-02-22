@@ -107,8 +107,9 @@ class _VoiceState extends State<Voice> {
           "#FUNCTION CAL WRITE day start_time end_time title - create a calendar event on a certain day with a start and end time, plus title it\n\n"
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
-          "Here is the prompt for the user: $_text";
-          
+          "Current conversation transcript: \n"
+          "$conversationHistoryText\n"
+          "Here is the newest prompt from the user: $_text\n";
 
       // "Use the conversation below to help answer the user prompt and do not make response longer than necessary.\n";
       // "$conversationHistoryText\n";
