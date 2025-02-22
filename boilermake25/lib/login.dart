@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:auth0_flutter/auth0_flutter.dart';
+
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -7,7 +9,22 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-class Login extends StatelessWidget {
+
+class Login extends StatefulWidget {
+  @override
+  _LoginState createState() => _LoginState();
+}
+
+class _LoginState extends State<Login> {
+  Credentials? _credentials;
+  late Auth0 auth0;
+
+  @override
+  void initState() {
+    super.initState();
+    auth0 = Auth0('dev-62vsviavz05io4lc.us.auth0.com', 'Opnt5PJcZWfTlZMp75dFhD4YS7PWC3kB');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,7 +65,7 @@ class Login extends StatelessWidget {
               _buildSection("Calendar", [
                 "Sign in with Microsoft",
                 "Sign in with Apple",
-                "Sign in with Google",
+                _buildGoogleSignIn(),
               ]),
 
               SizedBox(height: 20),
@@ -66,7 +83,36 @@ class Login extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(String title, List<String> buttons) {
+  Widget _buildGoogleSignIn() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(vertical: 14),
+          ),
+          onPressed: () async {
+            try {
+              final credentials = await auth0.webAuthentication(scheme: 'com.example.boilermake25').login(useHTTPS: true);
+              setState(() {
+                _credentials = credentials;
+              });
+              // Handle successful login
+              print('Logged in: ${credentials.user.name}');
+            } catch (e) {
+              print('Login error: $e');
+            }
+          },
+          child: Text("Sign in with Google"),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, List<dynamic> buttons) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -79,7 +125,10 @@ class Login extends StatelessWidget {
 
         // Buttons
         Column(
-          children: buttons.map((label) {
+          children: buttons.map((button) {
+            if (button is Widget) {
+              return button;
+            }
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 5),
               child: SizedBox(
@@ -90,9 +139,8 @@ class Login extends StatelessWidget {
                     foregroundColor: Colors.white, // White text
                     padding: EdgeInsets.symmetric(vertical: 14),
                   ),
-                  
                   onPressed: () {},
-                  child: Text(label),
+                  child: Text(button),
                 ),
               ),
             );

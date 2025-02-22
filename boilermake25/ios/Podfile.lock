@@ -1,0 +1,51 @@
+PODS:
+  - Auth0 (2.10.0):
+    - JWTDecode (= 3.2.0)
+    - SimpleKeychain (= 1.2.0)
+  - auth0_flutter (1.8.0):
+    - Auth0 (= 2.10.0)
+    - Flutter
+    - FlutterMacOS
+    - JWTDecode (= 3.2.0)
+    - SimpleKeychain (= 1.2.0)
+  - Flutter (1.0.0)
+  - JWTDecode (3.2.0)
+  - SimpleKeychain (1.2.0)
+  - speech_to_text (0.0.1):
+    - Flutter
+    - FlutterMacOS
+    - Try
+  - Try (2.1.1)
+
+DEPENDENCIES:
+  - auth0_flutter (from `.symlinks/plugins/auth0_flutter/darwin`)
+  - Flutter (from `Flutter`)
+  - speech_to_text (from `.symlinks/plugins/speech_to_text/darwin`)
+
+SPEC REPOS:
+  https://github.com/CocoaPods/Specs.git:
+    - Auth0
+    - JWTDecode
+    - SimpleKeychain
+    - Try
+
+EXTERNAL SOURCES:
+  auth0_flutter:
+    :path: ".symlinks/plugins/auth0_flutter/darwin"
+  Flutter:
+    :path: Flutter
+  speech_to_text:
+    :path: ".symlinks/plugins/speech_to_text/darwin"
+
+SPEC CHECKSUMS:
+  Auth0: 2876d0c36857422eda9cb580a6cc896c7d14cb36
+  auth0_flutter: b6cdd112051b908efb24dae3286a14643a2c6f70
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  JWTDecode: 7dae24cb9bf9b608eae61e5081029ec169bb5527
+  SimpleKeychain: 768cf43ae778b1c21816e94dddf01bb8ee96a075
+  speech_to_text: 9dc43a5df3cbc2813f8c7cc9bd0fbf94268ed7ac
+  Try: 5ef669ae832617b3cee58cb2c6f99fb767a4ff96
+
+PODFILE CHECKSUM: 629e4abe9227025a0a0dcbcc96682c0a6e7ae3bc
+
+COCOAPODS: 1.16.2
