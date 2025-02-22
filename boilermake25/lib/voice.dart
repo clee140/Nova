@@ -19,6 +19,8 @@ class _VoiceState extends State<Voice> {
   String _responseText = "AI response will appear here"; // Stores API response
   double _confidence = 1.0;
   final AudioPlayer _audioPlayer = AudioPlayer(); // Audio player instance
+  List<String> _conversationHistory = []; // To store AI responses
+  List<String> _userHistory = [];
 
   @override
   void initState() {
@@ -81,12 +83,33 @@ class _VoiceState extends State<Voice> {
         "https://api.cartesia.ai/tts/bytes"; // Cartesia TTS endpoint
 
     try {
-      // Step 1: Make request to Modal LLM API
+      String userHistoryText = _userHistory.join(
+        '\n',
+      ); // Convert _userHistory to string
+      String conversationHistoryText = _conversationHistory.join(
+        '\n',
+      ); // Convert _conversationHistory to string
+
+      // Step 2: Combine the history and current speech into a prompt
+      String combinedText =
+          "You are an AI assistant and are currently having a conversation with a user\n"
+          "Here is the prompt the user wants you to answer:\n"
+          "$_text\n"
+          "Use the conversation below to help answer the user prompt and do not make response longer than necessary.\n";
+          "User conversation history:\n"
+          "$userHistoryText\n"
+          "Your conversation history:\n"
+          "$conversationHistoryText\n";
+
+      // Step 3: Add the new text to the user history
+      _userHistory.add(_text); // Add the current user prompt to history
       final modalResponse = await http.post(
         Uri.parse(modalApiUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "prompts": [_text], // Send recognized speech as prompt to Modal
+          "prompts": [
+            combinedText,
+          ], // Send recognized speech as prompt to Modal
         }),
       );
 
@@ -102,7 +125,8 @@ class _VoiceState extends State<Voice> {
 
         setState(() {
           _responseText = modalTextOutput; // Display Modal's response
-          print(modalTextOutput);
+          // Add AI response to the conversation history
+          _conversationHistory.add(_responseText);
         });
 
         // Step 2: Send Modal's output to Cartesia API for TTS
@@ -114,7 +138,8 @@ class _VoiceState extends State<Voice> {
             "Content-Type": "application/json",
           },
           body: jsonEncode({
-            "model_id": "sonic", // You can use "sonic" or the appropriate model ID
+            "model_id":
+                "sonic", // You can use "sonic" or the appropriate model ID
             "transcript": modalTextOutput, // Use Modal's response as transcript
             "voice": {
               "mode": "id",
@@ -132,20 +157,21 @@ class _VoiceState extends State<Voice> {
         if (cartesiaResponse.statusCode == 200) {
           // Handling audio response (PCM data)
           final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
-        
+
           // Create a temporary URL for the audio data
           final audioSource = AudioSource.uri(
             Uri.dataFromBytes(
               audioBytes,
-              mimeType: 'audio/wav',
+              mimeType: 'audio/wav', // Use the appropriate mime type
             ),
           );
 
           final player = AudioPlayer();
 
           // Load and play the audio
-          await player.setAudioSource(audioSource);
-          await player.play();
+          await player.setAudioSource(audioSource).then((_) {
+            player.play();
+          });
 
           setState(() {
             _responseText = "Audio playing!";
@@ -197,6 +223,16 @@ class _VoiceState extends State<Voice> {
               _responseText, // Display AI/Modal response
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 16, color: Colors.blue),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Display conversation history
+          Expanded(
+            child: ListView.builder(
+              itemCount: _conversationHistory.length,
+              itemBuilder: (context, index) {
+                return ListTile(title: Text(_conversationHistory[index]));
+              },
             ),
           ),
           const Spacer(),
