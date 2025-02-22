@@ -34,7 +34,7 @@ class _LoginState extends State<Login> {
         backgroundColor: Colors.black,
         child: const Icon(Icons.arrow_forward, color: Colors.white,),
       ),
-      body: Center(
+      body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(24.0),
           child: Column(
@@ -92,7 +92,13 @@ class _LoginState extends State<Login> {
           ),
           onPressed: () async {
             try {
-              final credentials = await auth0.webAuthentication(scheme: 'demo').login();
+              print('Starting Auth0 login process...');
+              final credentials = await auth0.webAuthentication(
+                scheme: 'com.example.boilermake25',
+                parameters: {
+                  'prompt': 'login'
+                }
+              ).login();
               setState(() {
                 _credentials = credentials;
               });

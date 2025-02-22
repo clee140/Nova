@@ -30,7 +30,7 @@ android {
         versionName = "1.0"
 
         manifestPlaceholders["auth0Domain"] = "dev-62vsviavz05io4lc.us.auth0.com"
-        manifestPlaceholders["auth0Scheme"] = "demo"
+        manifestPlaceholders["auth0Scheme"] = "com.example.boilermake"
     }
 
     buildTypes {
