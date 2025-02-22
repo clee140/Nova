@@ -74,14 +74,14 @@ class _VoiceState extends State<Voice> {
         children: [
           PaintCanvas(),
           // Image in the middle of the screen
-          Center(
-            child: Image.asset(
-              'assets/microphone.png', // Change this to your image path
-              width: 150, // Adjust size as needed
-              height: 150,
-              fit: BoxFit.contain,
-            ),
-          ),
+          // Center(
+          //   child: Image.asset(
+          //     'assets/microphone.png', // Change this to your image path
+          //     width: 150, // Adjust size as needed
+          //     height: 150,
+          //     fit: BoxFit.contain,
+          //   ),
+          // ),
 
           const SizedBox(height: 20), // Adds spacing between image and text
 
@@ -105,9 +105,12 @@ class _VoiceState extends State<Voice> {
               onPressed:
                   _listen, // Start/stop listening when the button is pressed
               backgroundColor:
-                  _isListening ? Colors.greenAccent : Colors.amberAccent,
+                  _isListening ? Colors.white : Colors.black,
 
-              child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+              child: Icon(
+                _isListening ? Icons.mic : Icons.mic_none,
+                color: _isListening ? Colors.black : Colors.white,
+              ),
             ),
           ),
         ],
