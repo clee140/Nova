@@ -92,17 +92,31 @@ class _VoiceState extends State<Voice> {
 
       // Step 2: Combine the history and current speech into a prompt
       String combinedText =
-          "You are an AI assistant and are currently having a conversation with a user\n"
-          "Here is the prompt the user wants you to answer:\n"
-          "$_text\n"
-          "Use the conversation below to help answer the user prompt and do not make response longer than necessary.\n";
-          "User conversation history:\n"
-          "$userHistoryText\n"
-          "Your conversation history:\n"
-          "$conversationHistoryText\n";
+          "Your name is Luna and you are an AI personal assistant. Your job is \n"
+          "to answer the user's questions. Don't give incredibly length answers.\n"
+          "Be to the point and provide all information necessary/requested.\n\n"
+          "Today is Sunday, February 22nd, 2025. The weather is Sunny and clear but cold.\n\n"
+          "What's special about you is that you have the ability to call certain functions. These functions\n"
+          "will be called when you output this exact format: #FUNCTION FUNCTION_NAME ARG1 ARG2 ...\n"
+          "If there's a function in your result, we will execute the function and show you the results in the transcript. Otherwise we will treat your output as dialogue.\n"
+          "#FUNCTION FUNCTION_NAME ARG1 ARG2 ...\n\n"
+          "Here is a list of the exact APIs available to you:\n"
+          "#FUNCTION TODO CREATE <name_of_the_todo> - create a todo with a string title\n"
+          "#FUNCTION TODO READ - Get all todos. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
+          "#FUNCTION CAL READ - read all user calendar events\n"
+          "#FUNCTION CAL WRITE day start_time end_time title - create a calendar event on a certain day with a start and end time, plus title it\n\n"
+          "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
+          "below:\n\n"
+          "Here is the prompt for the user: $_text";
+          
+
+      // "Use the conversation below to help answer the user prompt and do not make response longer than necessary.\n";
+      // "$conversationHistoryText\n";
+
+      print(combinedText);
 
       // Step 3: Add the new text to the user history
-      _userHistory.add(_text); // Add the current user prompt to history
+      // Add the current user prompt to history
       final modalResponse = await http.post(
         Uri.parse(modalApiUrl),
         headers: {"Content-Type": "application/json"},
@@ -126,7 +140,8 @@ class _VoiceState extends State<Voice> {
         setState(() {
           _responseText = modalTextOutput; // Display Modal's response
           // Add AI response to the conversation history
-          _conversationHistory.add(_responseText);
+          _conversationHistory.add("User: $_text");
+          _conversationHistory.add("AI: $_responseText");
         });
 
         // Step 2: Send Modal's output to Cartesia API for TTS
@@ -134,7 +149,7 @@ class _VoiceState extends State<Voice> {
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_MDvTgDHL0dEsmapX4leKl", // Your API key
+            "X-API-Key": "sk_car_P9bFt1kAzKenZV_fMgVve", // Your API key
             "Content-Type": "application/json",
           },
           body: jsonEncode({

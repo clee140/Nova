@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'package:googleapis/calendar/v3.dart' as calendar;
+import 'package:googleapis_auth/googleapis_auth.dart' as auth;
 import 'voice.dart';
-import 'login.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,10 +15,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
+      title: 'Google Calendar Access',
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: SignInPage(),
       debugShowCheckedModeBanner: false,
     );
@@ -23,6 +24,10 @@ class MyApp extends StatelessWidget {
 }
 
 class SignInPage extends StatelessWidget {
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,20 +35,14 @@ class SignInPage extends StatelessWidget {
       body: Center(
         child: ElevatedButton(
           onPressed: () async {
-            // Simulating sign-in process
-            bool isSignedIn = await signInWithGoogle(); // Replace with your sign-in logic
-
+            bool isSignedIn = await signInWithGoogle();
             if (isSignedIn) {
-              // Navigate to the VoicePage after successful sign-in
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => Voice()),
-              );
+              // Access Google Calendar after sign-in
+              await accessGoogleCalendar(context);
             } else {
-              // Handle sign-in failure
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Sign-in failed!')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Sign-in failed!')));
             }
           },
           child: const Text('Sign In with Google'),
@@ -53,9 +52,68 @@ class SignInPage extends StatelessWidget {
   }
 
   Future<bool> signInWithGoogle() async {
-    // Implement your Google Sign-In logic here
-    // For now, let's just simulate a successful sign-in
-    await Future.delayed(Duration(seconds: 2)); // Simulate a delay
-    return true; // Simulate a successful sign-in
+    try {
+      GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account != null) {
+        print('User signed in: ${account.displayName}');
+        print('User email: ${account.email}');
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      print('Sign-in failed: $e');
+      return false;
+    }
+  }
+
+  Future<void> accessGoogleCalendar(BuildContext context) async {
+    try {
+      // Get the current Google Sign-In account
+      final GoogleSignInAccount? googleUser = _googleSignIn.currentUser;
+
+      // Get the authentication tokens
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser!.authentication;
+
+      // Get the access token
+      final accessToken = googleAuth.accessToken;
+
+      // Use the access token to authenticate with Google Calendar API
+      final client = auth.authenticatedClient(
+        http.Client(),
+        auth.AccessCredentials(
+          auth.AccessToken(
+            'Bearer',
+            accessToken!,
+            DateTime.now().toUtc().add(Duration(hours: 1)),
+          ),
+          '', // Refresh token not needed in this case
+          ['https://www.googleapis.com/auth/calendar.readonly'],
+        ),
+      );
+
+      // Create a Calendar API client
+      final calendarApi = calendar.CalendarApi(client);
+
+      // Get the user's calendar events
+      final events = await calendarApi.events.list(
+        'primary',
+      ); // 'primary' is the default calendar
+      events.items?.forEach((event) {
+        print('Event: ${event.summary} on ${event.start?.dateTime}');
+      });
+
+      // Don't forget to close the client when done
+      client.close();
+
+      // Navigate to VoicePage after accessing Google Calendar
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Voice()),
+      );
+    } catch (e) {
+      print('Failed to access Google Calendar: $e');
+    }
   }
 }
