@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'dart:ui' as ui;
 
 class Voice extends StatefulWidget {
   const Voice({super.key});
@@ -63,7 +64,7 @@ class _VoiceState extends State<Voice> {
       _speech.stop();
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,6 +72,7 @@ class _VoiceState extends State<Voice> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          PaintCanvas(),
           // Image in the middle of the screen
           Center(
             child: Image.asset(
@@ -112,4 +114,74 @@ class _VoiceState extends State<Voice> {
       ),
     );
   }
+}
+class PaintCanvas extends StatefulWidget {
+  @override
+  _PaintCanvasState createState() => _PaintCanvasState();
+}
+
+class _PaintCanvasState extends State<PaintCanvas> {
+  List<Offset?> _points = [];
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 300, // Adjust size as needed
+        height: 400,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20), // Rounded edges
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              spreadRadius: 2,
+              offset: Offset(4, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: GestureDetector(
+            onPanUpdate: (details) {
+              setState(() {
+                _points.add(details.localPosition);
+              });
+            },
+            onPanEnd: (details) {
+              _points.add(null);
+            },
+            child: CustomPaint(
+              painter: _CanvasPainter(_points),
+              size: Size.infinite,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CanvasPainter extends CustomPainter {
+  final List<Offset?> points;
+
+  _CanvasPainter(this.points);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    Paint paint = Paint()
+      ..color = Colors.black
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 5.0;
+
+    for (int i = 0; i < points.length - 1; i++) {
+      if (points[i] != null && points[i + 1] != null) {
+        canvas.drawLine(points[i]!, points[i + 1]!, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
