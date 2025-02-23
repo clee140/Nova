@@ -719,16 +719,10 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           padding: EdgeInsets.only(
             top: MediaQuery.of(context).size.height * 0.05,
           ),
-          child: const Text(
-            'Nova',
-            style: TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.8,
-              fontStyle: FontStyle.italic,
-              color: Colors.black,
-              fontFamily: 'Times New Roman',
-            ),
+          child: Image.asset(
+              'assets/icon/nova_logo_white_big.png',
+              width: 300, // You can adjust the width and height as needed
+              height: 300,
           ),
         ),
         centerTitle: true,
