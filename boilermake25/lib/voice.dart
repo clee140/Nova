@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'main.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:google_sign_in/google_sign_in.dart';
 
 bool count = false;
 
@@ -17,9 +18,13 @@ class Voice extends StatefulWidget {
   _VoiceState createState() => _VoiceState();
 }
 
-class _VoiceState extends State<Voice> with WidgetsBindingObserver {
+class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late stt.SpeechToText _speech;
   bool _isListening = false;
+  bool _isPlaying = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
   String _text = "Press the microphone button to start speaking";
   String _responseText = "AI response will appear here"; // Stores API response
   double _confidence = 1.0;
@@ -27,18 +32,56 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
   List<String> _conversationHistory = []; // To store AI responses
   List<String> _userHistory = [];
   Directory? _tempDir;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/tasks',
+      'https://www.googleapis.com/auth/tasks.readonly'
+    ],
+  );
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initResources();
+    _checkAndRefreshToken();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000), // Slower rotation
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _rotationAnimation = Tween<double>(begin: 0, end: 2 * 3.14159).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.linear),
+    );
   }
 
   Future<void> _initResources() async {
     _speech = stt.SpeechToText();
     _audioPlayer = AudioPlayer();
     await _initTempDir();
+  }
+
+  Future<void> _checkAndRefreshToken() async {
+    try {
+      final isSignedIn = await _googleSignIn.isSignedIn();
+      if (!isSignedIn) {
+        // Navigate back to sign-in page if not signed in
+        Navigator.of(context).pushReplacementNamed('/');
+        return;
+      }
+
+      final account = await _googleSignIn.signInSilently();
+      if (account != null) {
+        final auth = await account.authentication;
+        accessToken = auth.accessToken;
+      }
+    } catch (e) {
+      print('Error refreshing token: $e');
+      Navigator.of(context).pushReplacementNamed('/');
+    }
   }
 
   @override
@@ -49,6 +92,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.resumed) {
       // Reinitialize resources when app is resumed
       _initResources();
+      _checkAndRefreshToken();
     }
   }
 
@@ -63,6 +107,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cleanupResources();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -80,6 +125,11 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
         _audioPlayer = AudioPlayer();
       }
 
+      setState(() {
+        _isPlaying = true;
+        _animationController.repeat(); // Remove reverse for continuous rotation
+      });
+
       // Create a temporary file with a unique name
       final tempFile = File('${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
       await tempFile.writeAsBytes(audioBytes);
@@ -91,6 +141,11 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
       // Delete the file after playback completes
       _audioPlayer?.playerStateStream.listen((state) {
         if (state.processingState == ProcessingState.completed) {
+          setState(() {
+            _isPlaying = false;
+            _animationController.stop();
+            _animationController.reset();
+          });
           tempFile.delete().catchError((error) {
             print('Error deleting temporary file: $error');
           });
@@ -103,6 +158,9 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
     } catch (e) {
       print('Error playing audio: $e');
       setState(() {
+        _isPlaying = false;
+        _animationController.stop();
+        _animationController.reset();
         _responseText = "Error playing audio: $e";
       });
     }
@@ -334,7 +392,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_Hy9DJj_Ph13cofIaWd3vS", // Your API key
+            "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp", // Your API key
             "Content-Type": "application/json",
           },
           body: jsonEncode({
@@ -376,26 +434,38 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
   }
 
   Future<void> addGoogleTask(String taskTitle) async {
-    const String url =
-        "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks";
+    try {
+      await _checkAndRefreshToken();
+      if (accessToken == null) {
+        print('No access token available');
+        return;
+      }
 
-    Map<String, dynamic> taskData = {"title": taskTitle};
+      const String url = "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks";
+      Map<String, dynamic> taskData = {"title": taskTitle};
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(taskData),
-    );
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(taskData),
+      );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      print("Task added successfully: ${jsonDecode(response.body)}");
-    } else {
-      print("Failed to add task: ${response.statusCode}");
-      print(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("Task added successfully: ${jsonDecode(response.body)}");
+      } else {
+        print("Failed to add task: ${response.statusCode}");
+        print(response.body);
+        if (response.statusCode == 401) {
+          // Token expired, try to refresh
+          await _checkAndRefreshToken();
+        }
+      }
+    } catch (e) {
+      print('Error adding task: $e');
     }
   }
 
@@ -502,20 +572,48 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
             const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.only(bottom: 30),
-              child: FloatingActionButton.large(
-                onPressed: _listen,
-                backgroundColor:
-                    _isListening ? const Color(0xFFE9ECEF) : Colors.white,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  side: const BorderSide(color: Color(0xFF6C757D), width: 1.5),
-                ),
-                child: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  color: const Color(0xFF495057),
-                  size: 32,
-                ),
+              child: AnimatedBuilder(
+                animation: _animationController,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _isPlaying ? _scaleAnimation.value : 1.0,
+                    child: Transform.rotate(
+                      angle: _isPlaying ? _rotationAnimation.value : 0,
+                      child: Container(
+                        width: 96, // Match FloatingActionButton.large size
+                        height: 96,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: _isPlaying ? SweepGradient(
+                            center: Alignment.center,
+                            startAngle: 0,
+                            endAngle: 2 * 3.14159,
+                            colors: [
+                              Colors.white,
+                              const Color(0xFFF8F9FA),
+                              const Color(0xFFE9ECEF),
+                              const Color(0xFFDEE2E6),
+                              Colors.white,
+                            ],
+                          ) : null,
+                          color: _isListening ? const Color(0xFFE9ECEF) : Colors.white,
+                          border: Border.all(
+                            color: const Color(0xFF6C757D),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _listen,
+                            child: Container(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             const Padding(

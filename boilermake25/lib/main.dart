@@ -23,13 +23,22 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Google Calendar Access',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: SignInPage(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => SignInPage(),
+        '/voice': (context) => Voice(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class SignInPage extends StatelessWidget {
+class SignInPage extends StatefulWidget {
+  @override
+  _SignInPageState createState() => _SignInPageState();
+}
+
+class _SignInPageState extends State<SignInPage> {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'https://www.googleapis.com/auth/calendar.readonly',
@@ -37,6 +46,26 @@ class SignInPage extends StatelessWidget {
       'https://www.googleapis.com/auth/tasks.readonly'
     ],
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSignInStatus();
+  }
+
+  Future<void> _checkSignInStatus() async {
+    try {
+      final isSignedIn = await _googleSignIn.isSignedIn();
+      if (isSignedIn) {
+        final account = await _googleSignIn.signInSilently();
+        if (account != null) {
+          await accessGoogleCalendar(context);
+        }
+      }
+    } catch (e) {
+      print('Error checking sign-in status: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,8 +173,11 @@ class SignInPage extends StatelessWidget {
 
   Future<bool> signInWithGoogle() async {
     try {
+      await _googleSignIn.signOut(); // Sign out first to ensure clean state
       GoogleSignInAccount? account = await _googleSignIn.signIn();
       if (account != null) {
+        final auth = await account.authentication;
+        accessToken = auth.accessToken;
         print('User signed in: ${account.displayName}');
         print('User email: ${account.email}');
         return true;
@@ -161,14 +193,22 @@ class SignInPage extends StatelessWidget {
   Future<void> accessGoogleCalendar(BuildContext context) async {
     try {
       // Get the current Google Sign-In account
-      final GoogleSignInAccount? googleUser = _googleSignIn.currentUser;
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+      if (googleUser == null) {
+        print('No signed-in user');
+        return;
+      }
 
       // Get the authentication tokens
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser!.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       // Get the access token
       accessToken = googleAuth.accessToken;
+      
+      if (accessToken == null) {
+        print('No access token available');
+        return;
+      }
 
       // Use the access token to authenticate with Google Calendar API
       final client = auth.authenticatedClient(
