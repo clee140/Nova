@@ -1,9 +1,11 @@
 import 'dart:convert';
-import 'dart:typed_data'; // For handling audio data
+import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:just_audio/just_audio.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
 
 class Voice extends StatefulWidget {
   const Voice({super.key});
@@ -18,7 +20,7 @@ class _VoiceState extends State<Voice> {
   String _text = "Press the microphone button to start speaking";
   String _responseText = "AI response will appear here"; // Stores API response
   double _confidence = 1.0;
-  final AudioPlayer _audioPlayer = AudioPlayer(); // Audio player instance
+  final AudioPlayer _audioPlayer = AudioPlayer();
   List<String> _conversationHistory = []; // To store AI responses
   List<String> _userHistory = [];
 
@@ -26,6 +28,12 @@ class _VoiceState extends State<Voice> {
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   void _listen() async {
@@ -150,49 +158,53 @@ class _VoiceState extends State<Voice> {
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_P9bFt1kAzKenZV_fMgVve", // Your API key
+            "X-API-Key": "sk_car_P9bFt1kAzKenZV_fMgVve",
             "Content-Type": "application/json",
           },
           body: jsonEncode({
-            "model_id":
-                "sonic", // You can use "sonic" or the appropriate model ID
-            "transcript": modalTextOutput, // Use Modal's response as transcript
+            "model_id": "sonic",
+            "transcript": modalTextOutput,
             "voice": {
               "mode": "id",
-              "id": "694f9389-aac1-45b6-b726-9d9369183238", // Voice ID
+              "id": "694f9389-aac1-45b6-b726-9d9369183238",
             },
             "output_format": {
-              "container": "wav", // Specify WAV format for compatibility
-              "encoding": "pcm_s16le", // Use appropriate encoding
-              "sample_rate": 44100, // Sample rate for high-quality audio
+              "container": "wav",
+              "encoding": "pcm_s16le",
+              "sample_rate": 44100,
+              "bit_depth": 16,
+              "channels": 1
             },
             "language": "en",
           }),
         );
 
         if (cartesiaResponse.statusCode == 200) {
-          // Handling audio response (PCM data)
-          final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+          try {
+            // Get the raw audio bytes
+            final Uint8List audioBytes = cartesiaResponse.bodyBytes;
+            
+            // Get temporary directory
+            final tempDir = await getTemporaryDirectory();
+            final tempFile = File('${tempDir.path}/temp_audio.wav');
+            
+            // Write audio bytes to temporary file
+            await tempFile.writeAsBytes(audioBytes);
+            
+            // Play the audio from file
+            await _audioPlayer.stop();
+            await _audioPlayer.play(DeviceFileSource(tempFile.path));
+            print("Audio playback started from file: ${tempFile.path}");
 
-          // Create a temporary URL for the audio data
-          final audioSource = AudioSource.uri(
-            Uri.dataFromBytes(
-              audioBytes,
-              mimeType: 'audio/wav', // Use the appropriate mime type
-            ),
-          );
-
-          final player = AudioPlayer();
-
-          // Load and play the audio
-          await player.setAudioSource(audioSource).then((_) {
-            player.play();
-          });
-
-          setState(() {
-            _responseText = "Audio playing!";
-          });
-          print("Audio is playing!");
+            setState(() {
+              _responseText = modalTextOutput;
+            });
+          } catch (e) {
+            print("Audio playback error: $e");
+            setState(() {
+              _responseText = "Audio playback error: $e";
+            });
+          }
         } else {
           setState(() {
             _responseText = "Error in TTS API: ${cartesiaResponse.statusCode}";
