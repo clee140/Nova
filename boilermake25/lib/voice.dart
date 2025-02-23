@@ -751,7 +751,7 @@ class _VoiceState extends State<Voice>
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_carQ44Pt2uVYZsebiCEY5SS", // Your API key
+            "X-API-Key": "sk_car_m6xIVM_v-FRktrq_tI1vF", // Your API key
             "Content-Type": "application/json",
           },
           body: jsonEncode({
