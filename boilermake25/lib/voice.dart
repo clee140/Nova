@@ -436,7 +436,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             headers: {"Content-Type": "application/json"},
             body: jsonEncode({
               "prompts": [
-                "The task was created successfully, notify the user briefly\n",
+                "The event was created successfully, notify the user briefly\n",
               ],
             }),
           );
