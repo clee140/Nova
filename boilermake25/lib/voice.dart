@@ -11,6 +11,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 
 bool count = false;
+const String CARTESIA_API_KEY = "sk_car_m6xIVM_v-FRktrq_tI1vF";
+const String cartesiaApiUrl = "https://api.cartesia.ai/tts/bytes";
 
 class Voice extends StatefulWidget {
   final String? displayName;
@@ -61,19 +63,41 @@ class _VoiceState extends State<Voice>
   }
 
   Future<void> _initializeAndWelcome() async {
-    await _initResources();
-    await _checkAndRefreshToken();
-    await _initWeather();
-    // Get date and weather once during initialization
-    _dateAndWeather = await _getDateAndWeather();
-    // Play welcome message after all initialization is complete
-    await _playWelcomeMessage();
+    try {
+      // Initialize audio player first
+      _audioPlayer = AudioPlayer();
+      await _audioPlayer?.setVolume(1.0);
+      
+      // Initialize other resources
+      await _initResources();
+      await _checkAndRefreshToken();
+      await _initWeather();
+      
+      // Get date and weather once during initialization
+      _dateAndWeather = await _getDateAndWeather();
+      
+      // Ensure temp directory is initialized
+      if (_tempDir == null) {
+        _tempDir = await getTemporaryDirectory();
+      }
+      
+      // Play welcome message after all initialization is complete
+      if (!mounted) return; // Check if widget is still mounted
+      await _playWelcomeMessage();
+    } catch (e) {
+      print('Error in initialization: $e');
+      // If there's an error, still try to play welcome message
+      if (mounted) {
+        await _playWelcomeMessage();
+      }
+    }
   }
 
   Future<void> _initResources() async {
     _speech = stt.SpeechToText();
-    _audioPlayer = AudioPlayer();
-    await _initTempDir();
+    if (_tempDir == null) {
+      _tempDir = await getTemporaryDirectory();
+    }
   }
 
   Future<void> _checkAndRefreshToken() async {
@@ -135,11 +159,15 @@ class _VoiceState extends State<Voice>
 
       if (_audioPlayer == null) {
         _audioPlayer = AudioPlayer();
+        await _audioPlayer?.setVolume(1.0);
       }
 
       setState(() {
         _isPlaying = true;
       });
+
+      // Start the animation
+      _animationController.repeat();
 
       // Create a temporary file with a unique name
       final tempFile = File(
@@ -147,28 +175,41 @@ class _VoiceState extends State<Voice>
       );
       await tempFile.writeAsBytes(audioBytes);
 
-      // Use the file URL instead of data URL
+      // Play the audio and wait for completion
       await _audioPlayer?.setFilePath(tempFile.path);
       await _audioPlayer?.play();
 
-      // Delete the file after playback completes
-      _audioPlayer?.playerStateStream.listen((state) {
+      // Wait for the audio to complete playing
+      await for (final state in _audioPlayer!.playerStateStream) {
         if (state.processingState == ProcessingState.completed) {
-          setState(() {
-            _isPlaying = false;
-          });
-          tempFile.delete().catchError((error) {
-            print('Error deleting temporary file: $error');
-          });
-          // Start listening after audio finishes
-          _listen();
+          break;
         }
+      }
+
+      // Stop the animation
+      _animationController.stop();
+
+      // Cleanup
+      await tempFile.delete().catchError((error) {
+        print('Error deleting temporary file: $error');
       });
+
+      if (!mounted) return;
+
+      setState(() {
+        _isPlaying = false;
+      });
+
+      // Start listening after audio is fully complete
+      if (mounted) {
+        _listen();
+      }
     } catch (e) {
       print('Error playing audio: $e');
       setState(() {
         _isPlaying = false;
       });
+      _animationController.stop();
     }
   }
 
@@ -317,7 +358,6 @@ class _VoiceState extends State<Voice>
   Future<void> _makeApiCall() async {
     const String modalApiUrl =
         "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run";
-    const String cartesiaApiUrl = "https://api.cartesia.ai/tts/bytes";
 
     try {
       String userMessage = _text;
@@ -386,7 +426,7 @@ class _VoiceState extends State<Voice>
             Uri.parse(cartesiaApiUrl),
             headers: {
               "Cartesia-Version": "2024-06-10",
-              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "X-API-Key": CARTESIA_API_KEY,
               "Content-Type": "application/json",
             },
             body: jsonEncode({
@@ -441,7 +481,7 @@ class _VoiceState extends State<Voice>
             Uri.parse(cartesiaApiUrl),
             headers: {
               "Cartesia-Version": "2024-06-10",
-              "X-API-Key": "sk_car_m6xIVM_v-FRktrq_tI1vF",
+              "X-API-Key": CARTESIA_API_KEY,
               "Content-Type": "application/json",
             },
             body: jsonEncode({
@@ -494,7 +534,7 @@ class _VoiceState extends State<Voice>
             Uri.parse(cartesiaApiUrl),
             headers: {
               "Cartesia-Version": "2024-06-10",
-              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "X-API-Key": CARTESIA_API_KEY,
               "Content-Type": "application/json",
             },
             body: jsonEncode({
@@ -548,7 +588,7 @@ class _VoiceState extends State<Voice>
             Uri.parse(cartesiaApiUrl),
             headers: {
               "Cartesia-Version": "2024-06-10",
-              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "X-API-Key": CARTESIA_API_KEY,
               "Content-Type": "application/json",
             },
             body: jsonEncode({
@@ -786,7 +826,7 @@ class _VoiceState extends State<Voice>
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_m6xIVM_v-FRktrq_tI1vF", // Your API key
+            "X-API-Key": CARTESIA_API_KEY,
             "Content-Type": "application/json",
           },
           body: jsonEncode({
@@ -906,11 +946,30 @@ class _VoiceState extends State<Voice>
     String welcomeMessage = "Hello $name, I'm Nova! How can I help you today?";
 
     try {
+      // Ensure audio player is initialized
+      if (_audioPlayer == null) {
+        _audioPlayer = AudioPlayer();
+        await _audioPlayer?.setVolume(1.0);
+      }
+
+      // Ensure temp directory is initialized
+      if (_tempDir == null) {
+        _tempDir = await getTemporaryDirectory();
+      }
+
+      setState(() {
+        _text = welcomeMessage;
+        if (_isListening) {
+          _isListening = false;
+          _speech.stop();
+        }
+      });
+
       final cartesiaResponse = await http.post(
-        Uri.parse("https://api.cartesia.ai/tts/bytes"),
+        Uri.parse(cartesiaApiUrl),
         headers: {
           "Cartesia-Version": "2024-06-10",
-          "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+          "X-API-Key": CARTESIA_API_KEY,
           "Content-Type": "application/json",
         },
         body: jsonEncode({
@@ -928,46 +987,20 @@ class _VoiceState extends State<Voice>
 
       if (cartesiaResponse.statusCode == 200) {
         final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
-        if (_tempDir == null) {
-          await _initTempDir();
-        }
-
-        if (_audioPlayer == null) {
-          _audioPlayer = AudioPlayer();
-        }
-
-        setState(() {
-          _isPlaying = true;
-        });
-
-        // Create a temporary file with a unique name
-        final tempFile = File(
-          '${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav',
-        );
-        await tempFile.writeAsBytes(audioBytes);
-
-        // Use the file URL instead of data URL
-        await _audioPlayer?.setFilePath(tempFile.path);
-        await _audioPlayer?.play();
-
-        // Delete the file after playback completes and start listening
-        _audioPlayer?.playerStateStream.listen((state) {
-          if (state.processingState == ProcessingState.completed) {
-            setState(() {
-              _isPlaying = false;
-            });
-            tempFile.delete().catchError((error) {
-              print('Error deleting temporary file: $error');
-            });
-            // Start listening after welcome message finishes
-            _listen();
-          }
-        });
+        await _playAudio(audioBytes);
+      } else {
+        print('Error from Cartesia API: ${cartesiaResponse.statusCode}');
+        throw Exception('Failed to get audio from Cartesia');
       }
     } catch (e) {
       print('Error playing welcome message: $e');
+      setState(() {
+        _isPlaying = false;
+      });
       // If welcome message fails, start listening anyway
-      _listen();
+      if (mounted) {
+        _listen();
+      }
     }
   }
 
