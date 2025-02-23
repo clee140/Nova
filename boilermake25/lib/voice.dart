@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:just_audio/just_audio.dart';
 import 'main.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 bool count = false;
 
@@ -24,11 +26,57 @@ class _VoiceState extends State<Voice> {
   final AudioPlayer _audioPlayer = AudioPlayer(); // Audio player instance
   List<String> _conversationHistory = []; // To store AI responses
   List<String> _userHistory = [];
+  Directory? _tempDir;
 
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    _initTempDir();
+  }
+
+  Future<void> _initTempDir() async {
+    _tempDir = await getTemporaryDirectory();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _playAudio(Uint8List audioBytes) async {
+    try {
+      if (_tempDir == null) {
+        await _initTempDir();
+      }
+
+      // Create a temporary file
+      final tempFile = File('${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      await tempFile.writeAsBytes(audioBytes);
+
+      // Use the file URL instead of data URL
+      await _audioPlayer.setFilePath(tempFile.path);
+      await _audioPlayer.play();
+
+      // Delete the file after playback completes
+      _audioPlayer.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          tempFile.delete().catchError((error) {
+            print('Error deleting temporary file: $error');
+          });
+        }
+      });
+
+      setState(() {
+        _responseText = "Audio playing!";
+      });
+    } catch (e) {
+      print('Error playing audio: $e');
+      setState(() {
+        _responseText = "Error playing audio: $e";
+      });
+    }
   }
 
   void _listen() async {
@@ -249,26 +297,7 @@ class _VoiceState extends State<Voice> {
         if (cartesiaResponse.statusCode == 200) {
           // Handling audio response (PCM data)
           final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
-
-          // Create a temporary URL for the audio data
-          final audioSource = AudioSource.uri(
-            Uri.dataFromBytes(
-              audioBytes,
-              mimeType: 'audio/wav', // Use the appropriate mime type
-            ),
-          );
-
-          final player = AudioPlayer();
-
-          // Load and play the audio
-          await player.setAudioSource(audioSource).then((_) {
-            player.play();
-          });
-
-          setState(() {
-            _responseText = "Audio playing!";
-          });
-          print("Audio is playing!");
+          await _playAudio(audioBytes);
         } else {
           setState(() {
             _responseText = "Error in TTS API: ${cartesiaResponse.statusCode}";
@@ -291,9 +320,7 @@ class _VoiceState extends State<Voice> {
     return Scaffold(
       appBar: AppBar(
         title: Padding(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).size.height * 0.02,
-          ),
+          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.05),
           child: const Text(
             'Luna',
             style: TextStyle(
@@ -307,6 +334,7 @@ class _VoiceState extends State<Voice> {
           ),
         ),
         centerTitle: true,
+        toolbarHeight: MediaQuery.of(context).size.height * 0.2,
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -318,16 +346,16 @@ class _VoiceState extends State<Voice> {
             end: Alignment.bottomCenter,
             colors: [
               Colors.white,
-              Color(0xFFF8F9FA),
-              Color(0xFFE9ECEF),
-              Color(0xFFDEE2E6),
+              const Color(0xFFF8F9FA),  // Lightest grey
+              const Color(0xFFE9ECEF),  // Light grey
+              const Color(0xFFDEE2E6),  // Medium grey
             ],
-            stops: [0.0, 0.3, 0.6, 1.0],
+            stops: const [0.0, 0.3, 0.6, 1.0],
           ),
         ),
         child: Column(
           children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.17),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.05),
             Center(
               child: Text(
                 _text,
@@ -336,7 +364,7 @@ class _VoiceState extends State<Voice> {
                   fontSize: 20,
                   fontWeight: FontWeight.w400,
                   letterSpacing: 0.5,
-                  color: Colors.black87,
+                  color: Color(0xFF495057),  // Dark grey
                   height: 1.5,
                 ),
               ),
@@ -346,16 +374,46 @@ class _VoiceState extends State<Voice> {
               child: Text(
                 _responseText,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, color: Colors.blue),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF6C757D),  // Medium dark grey
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.3,
+                ),
               ),
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: ListView.builder(
-                itemCount: _conversationHistory.length,
-                itemBuilder: (context, index) {
-                  return ListTile(title: Text(_conversationHistory[index]));
-                },
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFDEE2E6),
+                    width: 1,
+                  ),
+                ),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _conversationHistory.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ),
+                      child: Text(
+                        _conversationHistory[index],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF495057),
+                          height: 1.5,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -363,8 +421,33 @@ class _VoiceState extends State<Voice> {
               padding: const EdgeInsets.only(bottom: 30),
               child: FloatingActionButton.large(
                 onPressed: _listen,
-                backgroundColor: Colors.amberAccent,
-                child: const Icon(Icons.mic_none),
+                backgroundColor: _isListening ? const Color(0xFFE9ECEF) : Colors.white,
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  side: const BorderSide(
+                    color: Color(0xFF6C757D),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  color: const Color(0xFF495057),
+                  size: 32,
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 20),
+              child: Text(
+                'Created by Caleb, Chris, and Ethan',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF6C757D),
+                  letterSpacing: 0.3,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           ],
