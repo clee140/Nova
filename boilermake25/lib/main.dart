@@ -42,6 +42,7 @@ class _SignInPageState extends State<SignInPage> {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/tasks',
       'https://www.googleapis.com/auth/tasks.readonly'
     ],
@@ -222,6 +223,7 @@ class _SignInPageState extends State<SignInPage> {
           '', // Refresh token not needed in this case
           [
             'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/calendar',
             'https://www.googleapis.com/auth/tasks',
             'https://www.googleapis.com/auth/tasks.readonly'
           ],
