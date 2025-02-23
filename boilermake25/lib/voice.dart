@@ -93,15 +93,14 @@ class _VoiceState extends State<Voice> {
           "Be to the point and provide all information necessary/requested.\n\n"
           "Today is Sunday, February 22nd, 2025. The weather is Sunny and clear but cold.\n\n"
           "What's special about you is that you have the ability to call certain functions. These functions\n"
-          "will be called when you output this exact format, without the backticks: #FUNCTION FUNCTION_NAME ARG1 ARG2 ...\n"
-          "It should be the ONLY thing you output, no other text or content.\n"
+          "will be called when you output this exact format, : ?FUNCTION FUNCTION_NAME ARG1\n"
+          "It should be the ONLY thing you output, no other text or content, just the function call as described above including the question mark at the beginning of your response.\n"
           "If there's a function in your result, we will execute the function and show you the results in the transcript. Otherwise we will treat your output as dialogue.\n\n"
           "Here is a list of the exact APIs available to you:\n"
-          "#FUNCTION TODO CREATE <name_of_the_todo> - create a todo with a string title\n"
-          "#FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
-          "#FUNCTION CAL READ - read all user calendar events\n"
-          "#FUNCTION CAL WRITE day start_time end_time title - create a calendar event on a certain day with a start and end time, plus title it\n\n"
-          "Do not use markdown for results, but only hashtags for functions\n"
+          "?FUNCTION TODO CREATE <name_of_the_todo> - create a to do with a string title\n"
+          "?FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
+          "?FUNCTION CAL READ - read all user calendar events\n"
+          "?FUNCTION CAL WRITE day start_time end_time title - create a calendar event on a certain day with a start and end time, plus title it\n\n"
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
           "Current conversation transcript: \n"
@@ -133,7 +132,7 @@ class _VoiceState extends State<Voice> {
         });
 
         // Step 4: If response is "#CAL READ", make second API call
-        if (modalTextOutput == "#CAL READ") {
+        if (modalTextOutput.contains("CAL READ")) {
           List<String> last10Events =
               globalCalendarEvents.length > 10
                   ? globalCalendarEvents.sublist(
@@ -156,9 +155,9 @@ class _VoiceState extends State<Voice> {
                 "Here is the user's calendar events: \n"
                     "User calendar events: ${last10Events.join(', ')}\n"
                     "Answer the user's prompt with this calendar information,\n"
-                    "making dates, times, and content clean and readable by a text-to-voice ai: $_text\n"
-                    "Do not use markdown for results\n",
-              ],
+                    "making dates, times, and content clean and readable by a text-to-voice ai: $_text\n."
+                    "Remove any asterisks in your output\n"
+                ],
             }),
           );
 
@@ -180,7 +179,7 @@ class _VoiceState extends State<Voice> {
           }
         }
         // Step 4: If response is "#CAL READ", make second API call
-        if (modalTextOutput == "#TODO READ") {
+        if (modalTextOutput.contains("TODO READ")) {
           List<String> last10Tasks =
               globalTasks.length > 10
                   ? globalTasks.sublist(
@@ -203,8 +202,7 @@ class _VoiceState extends State<Voice> {
                 "Here is the user's to do list tasks: \n"
                     "User to do list tasks: ${last10Tasks.join(', ')}\n"
                     "Answer the user's prompt with this task information,\n"
-                    "making descriptions, due dates, and content clean, readable, and alphanumeric only by a text-to-voice ai: $_text\n"
-                    "Do not use markdown for results\n",
+                    "making descriptions, due dates, and content clean, human readable, and alphanumeric only by a text-to-voice ai: $_text\n",
               ],
             }),
           );
@@ -220,7 +218,7 @@ class _VoiceState extends State<Voice> {
 
             // Update state with second response
             setState(() {
-              _responseText = modalTextOutputReadTodo;
+              _responseText = modalTextOutputReadTodo.replaceAll("*", "");
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
