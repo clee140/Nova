@@ -3,7 +3,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:googleapis/calendar/v3.dart' as calendar;
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
+import 'package:googleapis/tasks/v1.dart' as tasks;
+
 import 'voice.dart';
+
+List<String> globalCalendarEvents = [];
+List<String> globalTasks = [];
 
 void main() {
   runApp(const MyApp());
@@ -101,8 +106,26 @@ class SignInPage extends StatelessWidget {
         'primary',
       ); // 'primary' is the default calendar
       events.items?.forEach((event) {
-        print('Event: ${event.summary} on ${event.start?.dateTime}');
+        // print('Event: ${event.summary} on ${event.start?.dateTime}');
+        globalCalendarEvents.add(
+          'Event: ${event.summary} on ${event.start?.dateTime}',
+        );
       });
+
+      final tasksApi = tasks.TasksApi(client);
+
+      // Get the user's task lists
+      final taskLists = await tasksApi.tasklists.list();
+
+      // Fetch tasks for each task list
+      for (var taskList in taskLists.items!) {
+        final tasks = await tasksApi.tasks.list(taskList.id!);
+
+        tasks.items?.forEach((task) {
+          // Add task details to globalCalendarEvents (or create a separate list if needed)
+          globalTasks.add('Task: ${task.title} with due date: ${task.due}');
+        });
+      }
 
       // Don't forget to close the client when done
       client.close();

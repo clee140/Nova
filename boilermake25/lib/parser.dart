@@ -1,8 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-Future<String> fetchCalendarEvents(String accessToken, List<String> args) async {
-  final url = Uri.parse("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+Future<String> fetchCalendarEvents(
+  String accessToken,
+  List<String> args,
+) async {
+  final url = Uri.parse(
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+  );
 
   final response = await http.get(
     url,
@@ -17,7 +22,8 @@ Future<String> fetchCalendarEvents(String accessToken, List<String> args) async 
       return "No upcoming calendar events.";
     }
 
-    return "Calendar Events:\n" + events.map((e) => "- ${e['summary']}").join("\n");
+    return "Calendar Events:\n" +
+        events.map((e) => "- ${e['summary']}").join("\n");
   } else {
     return "Failed to fetch calendar events: ${response.body}";
   }
@@ -26,7 +32,9 @@ Future<String> fetchCalendarEvents(String accessToken, List<String> args) async 
 Future<String> addCalendarEvent(String accessToken, List<String> args) async {
   if (args.isEmpty) return "Error: Missing event details.";
 
-  final url = Uri.parse("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+  final url = Uri.parse(
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+  );
   final body = jsonEncode({
     "summary": args.join(" "), // Event title
     "start": {"dateTime": "2025-02-23T10:00:00Z", "timeZone": "UTC"},
@@ -50,7 +58,9 @@ Future<String> addCalendarEvent(String accessToken, List<String> args) async {
 }
 
 Future<String> fetchTasks(String accessToken, List<String> args) async {
-  final url = Uri.parse("https://www.googleapis.com/tasks/v1/lists/@default/tasks");
+  final url = Uri.parse(
+    "https://www.googleapis.com/tasks/v1/lists/@default/tasks",
+  );
 
   final response = await http.get(
     url,
@@ -74,7 +84,9 @@ Future<String> fetchTasks(String accessToken, List<String> args) async {
 Future<String> addTask(String accessToken, List<String> args) async {
   if (args.isEmpty) return "Error: Missing task details.";
 
-  final url = Uri.parse("https://www.googleapis.com/tasks/v1/lists/@default/tasks");
+  final url = Uri.parse(
+    "https://www.googleapis.com/tasks/v1/lists/@default/tasks",
+  );
   final body = jsonEncode({
     "title": args.join(" "), // Task title
   });
@@ -95,26 +107,27 @@ Future<String> addTask(String accessToken, List<String> args) async {
   }
 }
 
-typedef FunctionHandler = Future<String> Function(String accessToken, List<String> args);
+typedef FunctionHandler =
+    Future<String> Function(String accessToken, List<String> args);
 
 final Map<String, FunctionHandler> functionMap = {
-  "CAL READ": fetchCalendarEvents,
-  "CAL WRITE": addCalendarEvent,
-  "TODO READ": fetchTasks,
-  "TODO WRITE": addTask,
+  "#CAL READ": fetchCalendarEvents,
+  "#CAL WRITE": addCalendarEvent,
+  "#TODO READ": fetchTasks,
+  "#TODO WRITE": addTask,
 };
 
 Future<String> parseCommand(String input, String accessToken) async {
-  final parts = input.split(' '); // Split by spaces
-  if (parts.length < 3 || parts[0] != "#FUNCTION") {
+  if (!input.contains("#")) {
     return "Invalid command format.";
   }
 
-  final key = "${parts[1]} ${parts[2]}"; // Create key from CAL/ TODO + READ/WRITE
-  final args = parts.sublist(3); // Remaining args
-
-  if (functionMap.containsKey(key)) {
-    return await functionMap[key]!(accessToken, args); // Call function with token and args
+  if (functionMap.containsKey(input)) {
+    return await functionMap[input]!(
+      accessToken,
+      args
+    ); // Call function with token and args
   } else {
     return "Unknown command: $input";
   }
+}

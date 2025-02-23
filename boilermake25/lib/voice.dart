@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:just_audio/just_audio.dart';
+import 'main.dart';
+
+bool count = false;
 
 class Voice extends StatefulWidget {
   const Voice({super.key});
@@ -78,79 +81,157 @@ class _VoiceState extends State<Voice> {
 
   Future<void> _makeApiCall() async {
     const String modalApiUrl =
-        "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run"; // Modal LLM endpoint
+        "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run";
     const String cartesiaApiUrl =
         "https://api.cartesia.ai/tts/bytes"; // Cartesia TTS endpoint
 
     try {
-      String userHistoryText = _userHistory.join(
-        '\n',
-      ); // Convert _userHistory to string
-      String conversationHistoryText = _conversationHistory.join(
-        '\n',
-      ); // Convert _conversationHistory to string
-
-      // Step 2: Combine the history and current speech into a prompt
+      String conversationHistoryText = _conversationHistory.join('\n');
       String combinedText =
           "Your name is Luna and you are an AI personal assistant. Your job is \n"
           "to answer the user's questions. Don't give incredibly length answers.\n"
           "Be to the point and provide all information necessary/requested.\n\n"
           "Today is Sunday, February 22nd, 2025. The weather is Sunny and clear but cold.\n\n"
           "What's special about you is that you have the ability to call certain functions. These functions\n"
-          "will be called when you output this exact format: #FUNCTION FUNCTION_NAME ARG1 ARG2 ...\n"
-          "If there's a function in your result, we will execute the function and show you the results in the transcript. Otherwise we will treat your output as dialogue.\n"
-          "#FUNCTION FUNCTION_NAME ARG1 ARG2 ...\n\n"
+          "will be called when you output this exact format, without the backticks: #FUNCTION FUNCTION_NAME ARG1 ARG2 ...\n"
+          "It should be the ONLY thing you output, no other text or content.\n"
+          "If there's a function in your result, we will execute the function and show you the results in the transcript. Otherwise we will treat your output as dialogue.\n\n"
           "Here is a list of the exact APIs available to you:\n"
           "#FUNCTION TODO CREATE <name_of_the_todo> - create a todo with a string title\n"
-          "#FUNCTION TODO READ - Get all todos. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
+          "#FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
           "#FUNCTION CAL READ - read all user calendar events\n"
           "#FUNCTION CAL WRITE day start_time end_time title - create a calendar event on a certain day with a start and end time, plus title it\n\n"
+          "Do not use markdown for results, but only hashtags for functions\n"
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
           "Current conversation transcript: \n"
           "$conversationHistoryText\n"
           "Here is the newest prompt from the user: $_text\n";
 
-      // "Use the conversation below to help answer the user prompt and do not make response longer than necessary.\n";
-      // "$conversationHistoryText\n";
-
       print(combinedText);
+      print("Global tasks: $globalTasks");
 
-      // Step 3: Add the new text to the user history
-      // Add the current user prompt to history
+      // Step 3: First API Call
       final modalResponse = await http.post(
         Uri.parse(modalApiUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "prompts": [
-            combinedText,
-          ], // Send recognized speech as prompt to Modal
+          "prompts": [combinedText],
         }),
       );
 
       if (modalResponse.statusCode == 200) {
-        final List<dynamic> modalData = jsonDecode(
-          modalResponse.body,
-        ); // Parse the response
-
+        final List<dynamic> modalData = jsonDecode(modalResponse.body);
         String modalTextOutput =
-            modalData.isNotEmpty
-                ? modalData[0]
-                : "No response received."; // Extract first element
+            modalData.isNotEmpty ? modalData[0] : "No response received.";
 
+        // Update state with first response
         setState(() {
-          _responseText = modalTextOutput; // Display Modal's response
-          // Add AI response to the conversation history
+          _responseText = modalTextOutput;
           _conversationHistory.add("User: $_text");
           _conversationHistory.add("AI: $_responseText");
         });
 
+        // Step 4: If response is "#CAL READ", make second API call
+        if (modalTextOutput == "#CAL READ") {
+          List<String> last10Events =
+              globalCalendarEvents.length > 10
+                  ? globalCalendarEvents.sublist(
+                    globalCalendarEvents.length - 10,
+                  )
+                  : globalCalendarEvents;
+
+          print(globalCalendarEvents);
+
+          _conversationHistory.add(
+            "User calendar events: ${last10Events.join(', ')}",
+          );
+
+          // Make second API call
+          final modalResponseRead = await http.post(
+            Uri.parse(modalApiUrl),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "prompts": [
+                "Here is the user's calendar events: \n"
+                    "User calendar events: ${last10Events.join(', ')}\n"
+                    "Answer the user's prompt with this calendar information,\n"
+                    "making dates, times, and content clean and readable by a text-to-voice ai: $_text\n"
+                    "Do not use markdown for results\n",
+              ],
+            }),
+          );
+
+          if (modalResponseRead.statusCode == 200) {
+            final List<dynamic> modalDataRead = jsonDecode(
+              modalResponseRead.body,
+            );
+            String modalTextOutputRead =
+                modalDataRead.isNotEmpty
+                    ? modalDataRead[0]
+                    : "No response received.";
+
+            // Update state with second response
+            setState(() {
+              _responseText = modalTextOutputRead;
+              _conversationHistory.add("AI: $_responseText");
+              modalTextOutput = _responseText;
+            });
+          }
+        }
+        // Step 4: If response is "#CAL READ", make second API call
+        if (modalTextOutput == "#TODO READ") {
+          List<String> last10Tasks =
+              globalTasks.length > 10
+                  ? globalTasks.sublist(
+                    globalTasks.length - 10,
+                  )
+                  : globalTasks;
+
+          print(globalTasks);
+
+          _conversationHistory.add(
+            "User calendar events: ${last10Tasks.join(', ')}",
+          );
+
+          // Make second API call
+          final modalResponseReadTodo = await http.post(
+            Uri.parse(modalApiUrl),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "prompts": [
+                "Here is the user's to do list tasks: \n"
+                    "User to do list tasks: ${last10Tasks.join(', ')}\n"
+                    "Answer the user's prompt with this task information,\n"
+                    "making descriptions, due dates, and content clean, readable, and alphanumeric only by a text-to-voice ai: $_text\n"
+                    "Do not use markdown for results\n",
+              ],
+            }),
+          );
+
+          if (modalResponseReadTodo.statusCode == 200) {
+            final List<dynamic> modalDataReadTodo = jsonDecode(
+              modalResponseReadTodo.body,
+            );
+            String modalTextOutputReadTodo =
+                modalDataReadTodo.isNotEmpty
+                    ? modalDataReadTodo[0]
+                    : "No response received.";
+
+            // Update state with second response
+            setState(() {
+              _responseText = modalTextOutputReadTodo;
+              _conversationHistory.add("AI: $_responseText");
+              modalTextOutput = _responseText;
+            });
+          }
+        }
         // Step 2: Send Modal's output to Cartesia API for TTS
         final cartesiaResponse = await http.post(
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_P9bFt1kAzKenZV_fMgVve", // Your API key
+            "X-API-Key": "sk_car_uX0fyjZsROA65SDQeufjF", // Your API key
             "Content-Type": "application/json",
           },
           body: jsonEncode({
