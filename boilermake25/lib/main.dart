@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Google Calendar Access',
+      title: 'Voice Assistant',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: SignInPage(),
       debugShowCheckedModeBanner: false,

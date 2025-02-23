@@ -213,55 +213,114 @@ class _VoiceState extends State<Voice> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Assistant')),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Center(
-            child: Image.asset(
-              'assets/microphone.png',
-              width: 150,
-              height: 150,
-              fit: BoxFit.contain,
-            ),
+      appBar: AppBar(
+        title: const Text(
+          'Luna',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 1.0,
+            fontStyle: FontStyle.italic,
+            color: Colors.black,
+            fontFamily: 'serif',
           ),
-          const SizedBox(height: 20),
-          Center(
-            child: Text(
-              _text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Colors.white,
+              Colors.grey[200]!,
+              Colors.grey[300]!,
+            ],
+            stops: const [0.0, 0.3, 0.6, 1.0],
           ),
-          const SizedBox(height: 20),
-          Center(
-            child: Text(
-              _responseText, // Display AI/Modal response
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Colors.blue),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.17),
+                Center(
+                  child: Text(
+                    _text,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.5,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _conversationHistory.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        title: Text(
+                          _conversationHistory[index],
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: _conversationHistory[index].startsWith('User:') 
+                              ? Colors.black87 
+                              : Colors.black87,
+                            height: 1.5,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 20),
-          // Display conversation history
-          Expanded(
-            child: ListView.builder(
-              itemCount: _conversationHistory.length,
-              itemBuilder: (context, index) {
-                return ListTile(title: Text(_conversationHistory[index]));
-              },
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: FloatingActionButton.large(
+                  onPressed: _listen,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0.5,
+                  shape: const CircleBorder(),
+                  child: Container(
+                    width: 105,
+                    height: 105,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: _isListening 
+                        ? null
+                        : LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Colors.white, Colors.grey[200]!],
+                          ),
+                      color: _isListening ? Colors.black : null,
+                      border: Border.all(
+                        color: _isListening ? Colors.white : Colors.black,
+                        width: 3.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 30),
-            child: FloatingActionButton.large(
-              onPressed: _listen,
-              backgroundColor:
-                  _isListening ? Colors.greenAccent : Colors.amberAccent,
-              child: Icon(_isListening ? Icons.mic : Icons.mic_none),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
