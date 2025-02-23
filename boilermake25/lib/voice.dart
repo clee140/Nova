@@ -8,6 +8,7 @@ import 'main.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:intl/intl.dart';
 
 bool count = false;
 
@@ -41,6 +42,7 @@ class _VoiceState extends State<Voice>
       'https://www.googleapis.com/auth/tasks.readonly',
     ],
   );
+  String _currentWeather = "Weather information unavailable";
 
   @override
   void initState() {
@@ -48,6 +50,7 @@ class _VoiceState extends State<Voice>
     WidgetsBinding.instance.addObserver(this);
     _initResources();
     _checkAndRefreshToken();
+    _initWeather();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3000), // Slower rotation
@@ -231,66 +234,103 @@ class _VoiceState extends State<Voice>
     }
   }
 
+  Future<void> _initWeather() async {
+    try {
+      // West Lafayette coordinates
+      const double latitude = 40.4237;
+      const double longitude = -86.9212;
+      
+      final response = await http.get(
+        Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,weather_code'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final current = data['current'];
+        final temp = current['temperature_2m'];
+        final weatherCode = current['weather_code'];
+        
+        // Convert weather code to description
+        final String weatherDesc = _getWeatherDescription(weatherCode);
+        
+        setState(() {
+          _currentWeather = "$weatherDesc, temperature: ${temp.round()}°C";
+        });
+      } else {
+        throw Exception('Failed to load weather');
+      }
+    } catch (e) {
+      print('Error getting weather: $e');
+      setState(() {
+        _currentWeather = "Weather information unavailable";
+      });
+    }
+  }
+
+  String _getWeatherDescription(int code) {
+    // WMO Weather interpretation codes (https://open-meteo.com/en/docs)
+    switch (code) {
+      case 0:
+        return "Clear sky";
+      case 1:
+        return "Mainly clear";
+      case 2:
+        return "Partly cloudy";
+      case 3:
+        return "Overcast";
+      case 45:
+      case 48:
+        return "Foggy";
+      case 51:
+      case 53:
+      case 55:
+        return "Drizzle";
+      case 61:
+      case 63:
+      case 65:
+        return "Rain";
+      case 71:
+      case 73:
+      case 75:
+        return "Snow";
+      case 77:
+        return "Snow grains";
+      case 80:
+      case 81:
+      case 82:
+        return "Rain showers";
+      case 85:
+      case 86:
+        return "Snow showers";
+      case 95:
+        return "Thunderstorm";
+      case 96:
+      case 99:
+        return "Thunderstorm with hail";
+      default:
+        return "Unknown weather";
+    }
+  }
+
+  Future<String> _getDateAndWeather() async {
+    String formattedDate = DateFormat('EEEE, MMMM d, y').format(DateTime.now());
+    return "Today is $formattedDate. The weather is $_currentWeather.\n\n";
+  }
+
   Future<void> _makeApiCall() async {
     const String modalApiUrl =
         "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run";
     const String cartesiaApiUrl = "https://api.cartesia.ai/tts/bytes";
 
     try {
-      // Store the user's message before any processing
       String userMessage = _text;
-
-      // Check for logout request first
-      if (_text.toLowerCase().contains('log out') ||
-          _text.toLowerCase().contains('logout') ||
-          _text.toLowerCase().contains('sign out')) {
-        setState(() {
-          _responseText = "Logging you out. Goodbye!";
-          _text = "Logging you out. Goodbye!";
-          _conversationHistory.add("User: $userMessage");
-          _conversationHistory.add("AI: $_responseText");
-        });
-
-        // Play goodbye message
-        final cartesiaResponse = await http.post(
-          Uri.parse(cartesiaApiUrl),
-          headers: {
-            "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
-            "Content-Type": "application/json",
-          },
-          body: jsonEncode({
-            "model_id": "sonic",
-            "transcript": "Logging you out. Goodbye!",
-            "voice": {
-              "mode": "id",
-              "id": "694f9389-aac1-45b6-b726-9d9369183238",
-            },
-            "output_format": {
-              "container": "wav",
-              "encoding": "pcm_s16le",
-              "sample_rate": 44100,
-            },
-            "language": "en",
-          }),
-        );
-
-        if (cartesiaResponse.statusCode == 200) {
-          final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
-          await _playAudio(audioBytes);
-          // Wait for audio to finish before logging out
-          await Future.delayed(const Duration(seconds: 2));
-          await _handleLogout();
-          return;
-        }
-      }
-
+      String dateAndWeather = await _getDateAndWeather();
+      
       String conversationHistoryText = _conversationHistory.join('\n');
-      String combinedText =
-          "Your name is Nova and you are a voice-to-voice AI personal assistant. Your job is \n"
+      String combinedText = "Your name is Nova and you are a voice-to-voice AI personal assistant. Your job is \n"
           "to answer the user's questions. Don't give incredibly length answers.\n"
           "Be to the point and provide all information necessary/requested.\n\n"
-          "Today is Sunday, February 22nd, 2025. The weather is Sunny and clear but cold.\n\n"
+          "$dateAndWeather"
           "What's special about you is that you have the ability to call certain functions. These functions\n"
           "will be called when you output this exact format, : ?FUNCTION FUNCTION_NAME ARG1\n"
           "It should be the ONLY thing you output, no other text or content, just the function call as described above including the question mark at the beginning of your response.\n"
@@ -406,7 +446,7 @@ class _VoiceState extends State<Voice>
             Uri.parse(cartesiaApiUrl),
             headers: {
               "Cartesia-Version": "2024-06-10",
-              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "X-API-Key": "sk_car_m6xIVM_v-FRktrq_tI1vF",
               "Content-Type": "application/json",
             },
             body: jsonEncode({
