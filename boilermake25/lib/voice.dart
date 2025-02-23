@@ -17,13 +17,13 @@ class Voice extends StatefulWidget {
   _VoiceState createState() => _VoiceState();
 }
 
-class _VoiceState extends State<Voice> {
+class _VoiceState extends State<Voice> with WidgetsBindingObserver {
   late stt.SpeechToText _speech;
   bool _isListening = false;
   String _text = "Press the microphone button to start speaking";
   String _responseText = "AI response will appear here"; // Stores API response
   double _confidence = 1.0;
-  final AudioPlayer _audioPlayer = AudioPlayer(); // Audio player instance
+  AudioPlayer? _audioPlayer;
   List<String> _conversationHistory = []; // To store AI responses
   List<String> _userHistory = [];
   Directory? _tempDir;
@@ -31,18 +31,43 @@ class _VoiceState extends State<Voice> {
   @override
   void initState() {
     super.initState();
-    _speech = stt.SpeechToText();
-    _initTempDir();
+    WidgetsBinding.instance.addObserver(this);
+    _initResources();
   }
 
-  Future<void> _initTempDir() async {
-    _tempDir = await getTemporaryDirectory();
+  Future<void> _initResources() async {
+    _speech = stt.SpeechToText();
+    _audioPlayer = AudioPlayer();
+    await _initTempDir();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // Clean up resources when app is paused
+      _cleanupResources();
+    } else if (state == AppLifecycleState.resumed) {
+      // Reinitialize resources when app is resumed
+      _initResources();
+    }
+  }
+
+  Future<void> _cleanupResources() async {
+    _isListening = false;
+    await _speech.stop();
+    await _audioPlayer?.dispose();
+    _audioPlayer = null;
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _cleanupResources();
     super.dispose();
+  }
+
+  Future<void> _initTempDir() async {
+    _tempDir = await getTemporaryDirectory();
   }
 
   Future<void> _playAudio(Uint8List audioBytes) async {
@@ -51,18 +76,20 @@ class _VoiceState extends State<Voice> {
         await _initTempDir();
       }
 
-      // Create a temporary file
-      final tempFile = File(
-        '${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav',
-      );
+      if (_audioPlayer == null) {
+        _audioPlayer = AudioPlayer();
+      }
+
+      // Create a temporary file with a unique name
+      final tempFile = File('${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
       await tempFile.writeAsBytes(audioBytes);
 
       // Use the file URL instead of data URL
-      await _audioPlayer.setFilePath(tempFile.path);
-      await _audioPlayer.play();
+      await _audioPlayer?.setFilePath(tempFile.path);
+      await _audioPlayer?.play();
 
       // Delete the file after playback completes
-      _audioPlayer.playerStateStream.listen((state) {
+      _audioPlayer?.playerStateStream.listen((state) {
         if (state.processingState == ProcessingState.completed) {
           tempFile.delete().catchError((error) {
             print('Error deleting temporary file: $error');
