@@ -4,6 +4,8 @@
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We need access to your microphone for speech-to-text functionality.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>We need access to speech recognition to understand your voice commands and provide responses.</string>
 	<key>GIDClientID</key>
 	<string>348379914872-93kilj698rhldj6k0kggvg63dlhiulr6.apps.googleusercontent.com</string>
 	<key>CFBundleDevelopmentRegion</key>

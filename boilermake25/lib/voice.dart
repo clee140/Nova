@@ -215,13 +215,65 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
     _speech.stop();
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      await _googleSignIn.signOut();
+      accessToken = null;
+      Navigator.of(context).pushReplacementNamed('/');
+    } catch (e) {
+      print('Error during logout: $e');
+    }
+  }
+
   Future<void> _makeApiCall() async {
     const String modalApiUrl =
         "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run";
     const String cartesiaApiUrl =
-        "https://api.cartesia.ai/tts/bytes"; // Cartesia TTS endpoint
+        "https://api.cartesia.ai/tts/bytes";
 
     try {
+      // Check for logout request first
+      if (_text.toLowerCase().contains('log out') || 
+          _text.toLowerCase().contains('logout') ||
+          _text.toLowerCase().contains('sign out')) {
+        setState(() {
+          _responseText = "Logging you out. Goodbye!";
+        });
+        
+        // Play goodbye message
+        final cartesiaResponse = await http.post(
+          Uri.parse(cartesiaApiUrl),
+          headers: {
+            "Cartesia-Version": "2024-06-10",
+            "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+            "Content-Type": "application/json",
+          },
+          body: jsonEncode({
+            "model_id": "sonic",
+            "transcript": "Logging you out. Goodbye!",
+            "voice": {
+              "mode": "id",
+              "id": "694f9389-aac1-45b6-b726-9d9369183238",
+            },
+            "output_format": {
+              "container": "wav",
+              "encoding": "pcm_s16le",
+              "sample_rate": 44100,
+            },
+            "language": "en",
+          }),
+        );
+
+        if (cartesiaResponse.statusCode == 200) {
+          final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+          await _playAudio(audioBytes);
+          // Wait for audio to finish before logging out
+          await Future.delayed(const Duration(seconds: 2));
+          await _handleLogout();
+          return;
+        }
+      }
+
       String conversationHistoryText = _conversationHistory.join('\n');
       String combinedText =
           "Your name is Luna and you are an AI personal assistant. Your job is \n"
@@ -235,7 +287,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           "?FUNCTION TODO CREATE <name_of_the_todo> - create a to do with a string title\n"
           "?FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
           "?FUNCTION CAL READ - read all user calendar events\n"
-          "?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time - create a calendar event on a certain day with a start and end time, plus title it\n\n"
+          "?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time - create a calendar event on a certain day with a start and end time, plus title it\n"
+          "?FUNCTION LOGOUT - log the user out of their Google account and return to the sign-in screen\n\n"
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
           "Current conversation transcript: \n"
@@ -267,6 +320,46 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           _conversationHistory.add("User: $_text");
           _conversationHistory.add("AI: $_responseText");
         });
+
+        // Handle LOGOUT function
+        if (modalTextOutput.contains("?FUNCTION LOGOUT")) {
+          setState(() {
+            _responseText = "Logging you out. Goodbye!";
+          });
+          
+          // Play goodbye message
+          final cartesiaResponse = await http.post(
+            Uri.parse(cartesiaApiUrl),
+            headers: {
+              "Cartesia-Version": "2024-06-10",
+              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({
+              "model_id": "sonic",
+              "transcript": "Logging you out. Goodbye!",
+              "voice": {
+                "mode": "id",
+                "id": "694f9389-aac1-45b6-b726-9d9369183238",
+              },
+              "output_format": {
+                "container": "wav",
+                "encoding": "pcm_s16le",
+                "sample_rate": 44100,
+              },
+              "language": "en",
+            }),
+          );
+
+          if (cartesiaResponse.statusCode == 200) {
+            final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+            await _playAudio(audioBytes);
+            // Wait for audio to finish before logging out
+            await Future.delayed(const Duration(seconds: 2));
+            await _handleLogout();
+            return;
+          }
+        }
 
         // Step 4: If response is "#CAL READ", make second API call
         if (modalTextOutput.contains("CAL READ")) {
