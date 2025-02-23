@@ -4,6 +4,8 @@
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We need access to your microphone for speech-to-text functionality.</string>
+	<key>GIDClientID</key>
+	<string>348379914872-93kilj698rhldj6k0kggvg63dlhiulr6.apps.googleusercontent.com</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -45,6 +47,12 @@
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.348379914872-93kilj698rhldj6k0kggvg63dlhiulr6</string>
+			</array>
+		</dict>
 		<dict>
 			<key>CFBundleURLName</key>
 			<string>auth0</string>
