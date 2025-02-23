@@ -52,7 +52,9 @@ class _VoiceState extends State<Voice> {
       }
 
       // Create a temporary file
-      final tempFile = File('${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      final tempFile = File(
+        '${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav',
+      );
       await tempFile.writeAsBytes(audioBytes);
 
       // Use the file URL instead of data URL
@@ -202,8 +204,7 @@ class _VoiceState extends State<Voice> {
                 "Here is the user's calendar events: \n"
                     "User calendar events: ${last10Events.join(', ')}\n"
                     "Answer the user's prompt with this calendar information,\n"
-                    "making dates, times, and content clean and readable by a text-to-voice ai: $_text\n."
-                    "Remove any asterisks in your output\n",
+                    "making dates, times, and content clean and readable by a text-to-voice ai: $_text\n.",
               ],
             }),
           );
@@ -269,6 +270,38 @@ class _VoiceState extends State<Voice> {
             });
           }
         }
+        // Step 4: If response is "#TODO CREATE", make second API call
+        if (modalTextOutput.contains("TODO CREATE")) {
+          addGoogleTask("$_text");
+          // Make second API call
+          final modalResponseRead = await http.post(
+            Uri.parse(modalApiUrl),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "prompts": [
+                "The task was created successfully, notify the user briefly\n",
+              ],
+            }),
+          );
+
+          if (modalResponseRead.statusCode == 200) {
+            final List<dynamic> modalDataRead = jsonDecode(
+              modalResponseRead.body,
+            );
+            String modalTextOutputRead =
+                modalDataRead.isNotEmpty
+                    ? modalDataRead[0]
+                    : "No response received.";
+
+            // Update state with second response
+            setState(() {
+              _responseText = modalTextOutputRead;
+              _conversationHistory.add("AI: $_responseText");
+              modalTextOutput = _responseText;
+            });
+          }
+        }
+
         // Step 2: Send Modal's output to Cartesia API for TTS
         final cartesiaResponse = await http.post(
           Uri.parse(cartesiaApiUrl),
@@ -315,12 +348,38 @@ class _VoiceState extends State<Voice> {
     }
   }
 
+  Future<void> addGoogleTask(String taskTitle) async {
+    const String url =
+        "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks";
+
+    Map<String, dynamic> taskData = {"title": taskTitle};
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(taskData),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("Task added successfully: ${jsonDecode(response.body)}");
+    } else {
+      print("Failed to add task: ${response.statusCode}");
+      print(response.body);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Padding(
-          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.05),
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).size.height * 0.05,
+          ),
           child: const Text(
             'Luna',
             style: TextStyle(
@@ -346,9 +405,9 @@ class _VoiceState extends State<Voice> {
             end: Alignment.bottomCenter,
             colors: [
               Colors.white,
-              const Color(0xFFF8F9FA),  // Lightest grey
-              const Color(0xFFE9ECEF),  // Light grey
-              const Color(0xFFDEE2E6),  // Medium grey
+              const Color(0xFFF8F9FA), // Lightest grey
+              const Color(0xFFE9ECEF), // Light grey
+              const Color(0xFFDEE2E6), // Medium grey
             ],
             stops: const [0.0, 0.3, 0.6, 1.0],
           ),
@@ -364,7 +423,7 @@ class _VoiceState extends State<Voice> {
                   fontSize: 20,
                   fontWeight: FontWeight.w400,
                   letterSpacing: 0.5,
-                  color: Color(0xFF495057),  // Dark grey
+                  color: Color(0xFF495057), // Dark grey
                   height: 1.5,
                 ),
               ),
@@ -376,7 +435,7 @@ class _VoiceState extends State<Voice> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF6C757D),  // Medium dark grey
+                  color: Color(0xFF6C757D), // Medium dark grey
                   fontWeight: FontWeight.w400,
                   letterSpacing: 0.3,
                 ),
@@ -389,10 +448,7 @@ class _VoiceState extends State<Voice> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFFDEE2E6),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFDEE2E6), width: 1),
                 ),
                 child: ListView.builder(
                   padding: const EdgeInsets.all(8),
@@ -421,14 +477,12 @@ class _VoiceState extends State<Voice> {
               padding: const EdgeInsets.only(bottom: 30),
               child: FloatingActionButton.large(
                 onPressed: _listen,
-                backgroundColor: _isListening ? const Color(0xFFE9ECEF) : Colors.white,
+                backgroundColor:
+                    _isListening ? const Color(0xFFE9ECEF) : Colors.white,
                 elevation: 4,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
-                  side: const BorderSide(
-                    color: Color(0xFF6C757D),
-                    width: 1.5,
-                  ),
+                  side: const BorderSide(color: Color(0xFF6C757D), width: 1.5),
                 ),
                 child: Icon(
                   _isListening ? Icons.mic : Icons.mic_none,

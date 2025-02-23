@@ -9,6 +9,7 @@ import 'voice.dart';
 
 List<String> globalCalendarEvents = [];
 List<String> globalTasks = [];
+String? accessToken = "";
 
 void main() {
   runApp(const MyApp());
@@ -37,12 +38,14 @@ class SignInPage extends StatelessWidget {
     ],
   );
 
-   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Padding(
-          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.05),
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).size.height * 0.05,
+          ),
           child: const Text(
             'Luna',
             style: TextStyle(
@@ -68,9 +71,9 @@ class SignInPage extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               Colors.white,
-              const Color(0xFFF8F9FA),  // Lightest grey
-              const Color(0xFFE9ECEF),  // Light grey
-              const Color(0xFFDEE2E6),  // Medium grey
+              const Color(0xFFF8F9FA), // Lightest grey
+              const Color(0xFFE9ECEF), // Light grey
+              const Color(0xFFDEE2E6), // Medium grey
             ],
             stops: const [0.0, 0.3, 0.6, 1.0],
           ),
@@ -83,11 +86,17 @@ class SignInPage extends StatelessWidget {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF495057),  // Dark grey
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  foregroundColor: const Color(0xFF495057), // Dark grey
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Color(0xFF6C757D), width: 1.5),  // Medium dark grey
+                    side: const BorderSide(
+                      color: Color(0xFF6C757D),
+                      width: 1.5,
+                    ), // Medium dark grey
                   ),
                 ),
                 onPressed: () async {
@@ -118,7 +127,9 @@ class SignInPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: const Color(0xFF6C757D),  // Medium dark grey for credits text
+                    color: const Color(
+                      0xFF6C757D,
+                    ), // Medium dark grey for credits text
                     letterSpacing: 0.3,
                     fontStyle: FontStyle.italic,
                   ),
@@ -130,7 +141,6 @@ class SignInPage extends StatelessWidget {
       ),
     );
   }
-
 
   Future<bool> signInWithGoogle() async {
     try {
@@ -158,7 +168,7 @@ class SignInPage extends StatelessWidget {
           await googleUser!.authentication;
 
       // Get the access token
-      final accessToken = googleAuth.accessToken;
+      accessToken = googleAuth.accessToken;
 
       // Use the access token to authenticate with Google Calendar API
       final client = auth.authenticatedClient(
