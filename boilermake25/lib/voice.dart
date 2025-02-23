@@ -1042,15 +1042,18 @@ class _VoiceState extends State<Voice>
           children: [
             SizedBox(height: MediaQuery.of(context).size.height * 0.05),
             Center(
-              child: Text(
-                _text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: 0.5,
-                  color: Color(0xFF495057),
-                  height: 1.5,
+              child: Padding( // Ensure Padding is properly wrapped inside child
+                padding: EdgeInsets.all(30),
+                child: Text(
+                  _text,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 0.5,
+                    color: Color(0xFF495057),
+                    height: 1.5,
+                  ),
                 ),
               ),
             ),
