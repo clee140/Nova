@@ -12,7 +12,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 bool count = false;
 
 class Voice extends StatefulWidget {
-  const Voice({super.key});
+  final String? displayName;
+  const Voice({super.key, this.displayName});
 
   @override
   _VoiceState createState() => _VoiceState();
@@ -26,7 +27,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
   String _text = "Press the microphone button to start speaking";
-  String _responseText = "AI response will appear here"; // Stores API response
+  String _responseText = ""; // Stores API response
   double _confidence = 1.0;
   AudioPlayer? _audioPlayer;
   List<String> _conversationHistory = []; // To store AI responses
@@ -56,6 +57,9 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
     _rotationAnimation = Tween<double>(begin: 0, end: 2 * 3.14159).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.linear),
     );
+    
+    // Play welcome message
+    _playWelcomeMessage();
   }
 
   Future<void> _initResources() async {
@@ -153,17 +157,12 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           });
         }
       });
-
-      setState(() {
-        _responseText = "Audio playing!";
-      });
     } catch (e) {
       print('Error playing audio: $e');
       setState(() {
         _isPlaying = false;
         _animationController.stop();
         _animationController.reset();
-        _responseText = "Error playing audio: $e";
       });
     }
   }
@@ -262,7 +261,9 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
 
         // Update state with first response
         setState(() {
-          _responseText = modalTextOutput;
+          if (!modalTextOutput.startsWith("?FUNCTION")) {
+            _responseText = modalTextOutput;
+          }
           _conversationHistory.add("User: $_text");
           _conversationHistory.add("AI: $_responseText");
         });
@@ -580,6 +581,43 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
   }
 }
 
+  Future<void> _playWelcomeMessage() async {
+    String name = widget.displayName?.split(' ')[0] ?? 'there';
+    String welcomeMessage = "Hello $name, how can I help?";
+    
+    try {
+      final cartesiaResponse = await http.post(
+        Uri.parse("https://api.cartesia.ai/tts/bytes"),
+        headers: {
+          "Cartesia-Version": "2024-06-10",
+          "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "model_id": "sonic",
+          "transcript": welcomeMessage,
+          "voice": {
+            "mode": "id",
+            "id": "694f9389-aac1-45b6-b726-9d9369183238",
+          },
+          "output_format": {
+            "container": "wav",
+            "encoding": "pcm_s16le",
+            "sample_rate": 44100,
+          },
+          "language": "en",
+        }),
+      );
+
+      if (cartesiaResponse.statusCode == 200) {
+        final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+        await _playAudio(audioBytes);
+      }
+    } catch (e) {
+      print('Error playing welcome message: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -649,38 +687,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFDEE2E6), width: 1),
-                ),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: _conversationHistory.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 12,
-                      ),
-                      child: Text(
-                        _conversationHistory[index],
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF495057),
-                          height: 1.5,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            const Spacer(),
             Padding(
               padding: const EdgeInsets.only(bottom: 30),
               child: AnimatedBuilder(

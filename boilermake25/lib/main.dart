@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => SignInPage(),
-        '/voice': (context) => Voice(),
+        '/voice': (context) => const Voice(),
       },
       debugShowCheckedModeBanner: false,
     );
@@ -193,15 +193,14 @@ class _SignInPageState extends State<SignInPage> {
 
   Future<void> accessGoogleCalendar(BuildContext context) async {
     try {
-      // Get the current Google Sign-In account
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
-      if (googleUser == null) {
-        print('No signed-in user');
+      final account = await _googleSignIn.signInSilently();
+      if (account == null) {
+        print('No signed in account found');
         return;
       }
 
       // Get the authentication tokens
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await account.authentication;
 
       // Get the access token
       accessToken = googleAuth.accessToken;
@@ -265,7 +264,9 @@ class _SignInPageState extends State<SignInPage> {
       // Navigate to VoicePage after accessing Google Calendar
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => Voice()),
+        MaterialPageRoute(
+          builder: (context) => Voice(displayName: account.displayName),
+        ),
       );
     } catch (e) {
       print('Failed to access Google Calendar: $e');
