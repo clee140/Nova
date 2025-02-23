@@ -276,7 +276,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
 
       String conversationHistoryText = _conversationHistory.join('\n');
       String combinedText =
-          "Your name is Luna and you are an AI personal assistant. Your job is \n"
+          "Your name is Nova and you are an AI personal assistant. Your job is \n"
           "to answer the user's questions. Don't give incredibly length answers.\n"
           "Be to the point and provide all information necessary/requested.\n\n"
           "Today is Sunday, February 22nd, 2025. The weather is Sunny and clear but cold.\n\n"
@@ -720,7 +720,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             top: MediaQuery.of(context).size.height * 0.05,
           ),
           child: const Text(
-            'Luna',
+            'Nova',
             style: TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w500,

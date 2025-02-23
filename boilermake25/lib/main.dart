@@ -77,7 +77,7 @@ class _SignInPageState extends State<SignInPage> {
             top: MediaQuery.of(context).size.height * 0.05,
           ),
           child: const Text(
-            'Luna',
+            'Nova',
             style: TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w500,
