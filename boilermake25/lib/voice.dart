@@ -260,9 +260,9 @@ class _VoiceState extends State<Voice> with SingleTickerProviderStateMixin {
             end: Alignment.bottomCenter,
             colors: [
               Colors.white,
-              Colors.white,
-              Colors.grey[200]!,
-              Colors.grey[300]!,
+              const Color(0xFFF8F9FA),  // Lightest grey
+              const Color(0xFFE9ECEF),  // Light grey
+              const Color(0xFFDEE2E6),  // Medium grey
             ],
             stops: const [0.0, 0.3, 0.6, 1.0],
           ),
@@ -310,31 +310,31 @@ class _VoiceState extends State<Voice> with SingleTickerProviderStateMixin {
                           gradient: _isPlaying
                               ? SweepGradient(
                                   colors: const [
-                                    Color(0xFFE8E8E8), // Light grey
-                                    Color(0xFFF0F0F0), // Slightly lighter grey
-                                    Color(0xFFF5F5F5), // Almost white
-                                    Color(0xFFE8E8E8), // Light grey
-                                    Color(0xFFE0E0E0), // Slightly darker grey
-                                    Color(0xFFE8E8E8), // Light grey
-                                    Color(0xFFE8E8E8), // Back to light grey
+                                    Color(0xFF495057),  // Dark grey
+                                    Color(0xFF6C757D),  // Medium dark grey
+                                    Color(0xFFADB5BD),  // Medium grey
+                                    Color(0xFFCED4DA),  // Light medium grey
+                                    Color(0xFF495057),  // Back to dark grey
                                   ],
-                                  stops: const [0.0, 0.17, 0.34, 0.51, 0.68, 0.85, 1.0],
+                                  stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
                                   transform: GradientRotation(_animationController.value * 2 * 3.14159),
                                 )
                               : _isListening
                                   ? LinearGradient(
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
-                                      colors: [Colors.grey[400]!, Colors.grey[500]!],
+                                      colors: [
+                                        const Color(0xFF495057),  // Dark grey
+                                        const Color(0xFF343A40),  // Darker grey
+                                      ],
                                     )
                                   : LinearGradient(
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
-                                      colors: [Colors.white, Colors.grey[50]!],
+                                      colors: [Colors.white, const Color(0xFFF8F9FA)],  // White to lightest grey
                                     ),
-                          color: null,
                           border: Border.all(
-                            color: _isListening ? Colors.white : Colors.grey[400]!,
+                            color: _isListening ? Colors.white : const Color(0xFF6C757D),  // White or medium dark grey
                             width: _isListening ? 2.5 : 2.0,
                           ),
                         ),

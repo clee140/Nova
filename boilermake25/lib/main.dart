@@ -59,9 +59,9 @@ class SignInPage extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               Colors.white,
-              Colors.white,
-              Colors.grey[200]!,
-              Colors.grey[300]!,
+              const Color(0xFFF8F9FA),  // Lightest grey
+              const Color(0xFFE9ECEF),  // Light grey
+              const Color(0xFFDEE2E6),  // Medium grey
             ],
             stops: const [0.0, 0.3, 0.6, 1.0],
           ),
@@ -74,11 +74,11 @@ class SignInPage extends StatelessWidget {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
+                  foregroundColor: const Color(0xFF495057),  // Dark grey
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.black, width: 1.5),
+                    side: const BorderSide(color: Color(0xFF6C757D), width: 1.5),  // Medium dark grey
                   ),
                 ),
                 onPressed: () async {
@@ -109,7 +109,7 @@ class SignInPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: Colors.black54,
+                    color: const Color(0xFF6C757D),  // Medium dark grey for credits text
                     letterSpacing: 0.3,
                     fontStyle: FontStyle.italic,
                   ),
