@@ -155,8 +155,8 @@ class _VoiceState extends State<Voice> {
                     "User calendar events: ${last10Events.join(', ')}\n"
                     "Answer the user's prompt with this calendar information,\n"
                     "making dates, times, and content clean and readable by a text-to-voice ai: $_text\n."
-                    "Remove any asterisks in your output\n"
-                ],
+                    "Remove any asterisks in your output\n",
+              ],
             }),
           );
 
@@ -181,9 +181,7 @@ class _VoiceState extends State<Voice> {
         if (modalTextOutput.contains("TODO READ")) {
           List<String> last10Tasks =
               globalTasks.length > 10
-                  ? globalTasks.sublist(
-                    globalTasks.length - 10,
-                  )
+                  ? globalTasks.sublist(globalTasks.length - 10)
                   : globalTasks;
 
           print(globalTasks);
@@ -291,55 +289,86 @@ class _VoiceState extends State<Voice> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Assistant')),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Center(
-            child: Image.asset(
-              'assets/microphone.png',
-              width: 150,
-              height: 150,
-              fit: BoxFit.contain,
+      appBar: AppBar(
+        title: Padding(
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).size.height * 0.02,
+          ),
+          child: const Text(
+            'Luna',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.8,
+              fontStyle: FontStyle.italic,
+              color: Colors.black,
+              fontFamily: 'Times New Roman',
             ),
           ),
-          const SizedBox(height: 20),
-          Center(
-            child: Text(
-              _text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Color(0xFFF8F9FA),
+              Color(0xFFE9ECEF),
+              Color(0xFFDEE2E6),
+            ],
+            stops: [0.0, 0.3, 0.6, 1.0],
           ),
-          const SizedBox(height: 20),
-          Center(
-            child: Text(
-              _responseText, // Display AI/Modal response
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Colors.blue),
+        ),
+        child: Column(
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.17),
+            Center(
+              child: Text(
+                _text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.5,
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          // Display conversation history
-          Expanded(
-            child: ListView.builder(
-              itemCount: _conversationHistory.length,
-              itemBuilder: (context, index) {
-                return ListTile(title: Text(_conversationHistory[index]));
-              },
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
+                _responseText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: Colors.blue),
+              ),
             ),
-          ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 30),
-            child: FloatingActionButton.large(
-              onPressed: _listen,
-              backgroundColor:
-                  _isListening ? Colors.greenAccent : Colors.amberAccent,
-              child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _conversationHistory.length,
+                itemBuilder: (context, index) {
+                  return ListTile(title: Text(_conversationHistory[index]));
+                },
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 30),
+              child: FloatingActionButton.large(
+                onPressed: _listen,
+                backgroundColor: Colors.amberAccent,
+                child: const Icon(Icons.mic_none),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
