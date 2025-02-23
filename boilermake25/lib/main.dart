@@ -31,21 +31,92 @@ class SignInPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign In')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            bool isSignedIn = await signInWithGoogle();
-            if (isSignedIn) {
-              // Access Google Calendar after sign-in
-              await accessGoogleCalendar(context);
-            } else {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Sign-in failed!')));
-            }
-          },
-          child: const Text('Sign In with Google'),
+      appBar: AppBar(
+        title: Padding(
+          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.1),
+          child: const Text(
+            'Luna',
+            style: TextStyle(
+              fontSize: 38,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.5,
+              fontStyle: FontStyle.italic,
+              color: Colors.black,
+              fontFamily: 'serif',
+            ),
+          ),
+        ),
+        centerTitle: true,
+        toolbarHeight: MediaQuery.of(context).size.height * 0.2,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Colors.white,
+              Colors.grey[200]!,
+              Colors.grey[300]!,
+            ],
+            stops: const [0.0, 0.3, 0.6, 1.0],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.17),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.black, width: 1.5),
+                  ),
+                ),
+                onPressed: () async {
+                  bool isSignedIn = await signInWithGoogle();
+                  if (isSignedIn) {
+                    // Access Google Calendar after sign-in
+                    await accessGoogleCalendar(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Sign-in failed!')),
+                    );
+                  }
+                },
+                child: const Text(
+                  'Sign In with Google',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 40),
+                child: Text(
+                  'Created by Caleb, Chris, and Ethan',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black54,
+                    letterSpacing: 0.3,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
