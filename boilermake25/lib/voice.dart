@@ -26,7 +26,6 @@ class _VoiceState extends State<Voice>
   bool _isListening = false;
   bool _isPlaying = false;
   late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
   String _text = "Press the microphone button to start speaking";
   String _responseText = ""; // Stores API response
@@ -43,27 +42,32 @@ class _VoiceState extends State<Voice>
     ],
   );
   String _currentWeather = "Weather information unavailable";
+  String _dateAndWeather = "";
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initResources();
-    _checkAndRefreshToken();
-    _initWeather();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000), // Slower rotation
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+      duration: const Duration(milliseconds: 3000),
     );
     _rotationAnimation = Tween<double>(begin: 0, end: 2 * 3.14159).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.linear),
     );
 
-    // Play welcome message
-    _playWelcomeMessage();
+    // Initialize all resources before playing welcome message
+    _initializeAndWelcome();
+  }
+
+  Future<void> _initializeAndWelcome() async {
+    await _initResources();
+    await _checkAndRefreshToken();
+    await _initWeather();
+    // Get date and weather once during initialization
+    _dateAndWeather = await _getDateAndWeather();
+    // Play welcome message after all initialization is complete
+    await _playWelcomeMessage();
   }
 
   Future<void> _initResources() async {
@@ -135,7 +139,6 @@ class _VoiceState extends State<Voice>
 
       setState(() {
         _isPlaying = true;
-        _animationController.repeat(); // Remove reverse for continuous rotation
       });
 
       // Create a temporary file with a unique name
@@ -153,8 +156,6 @@ class _VoiceState extends State<Voice>
         if (state.processingState == ProcessingState.completed) {
           setState(() {
             _isPlaying = false;
-            _animationController.stop();
-            _animationController.reset();
           });
           tempFile.delete().catchError((error) {
             print('Error deleting temporary file: $error');
@@ -167,8 +168,6 @@ class _VoiceState extends State<Voice>
       print('Error playing audio: $e');
       setState(() {
         _isPlaying = false;
-        _animationController.stop();
-        _animationController.reset();
       });
     }
   }
@@ -216,9 +215,7 @@ class _VoiceState extends State<Voice>
       if (_text.isEmpty || _text == "Listening...") {
         _text = "Press the microphone button to start speaking";
       } else {
-        _makeApiCall(); // Send the recognized speech to the API first
-        _text =
-            "Loading response..."; // Show loading state after speech is processed
+        _makeApiCall(); // Send the recognized speech to the API
       }
     });
     _speech.stop();
@@ -324,13 +321,11 @@ class _VoiceState extends State<Voice>
 
     try {
       String userMessage = _text;
-      String dateAndWeather = await _getDateAndWeather();
-      
-      String conversationHistoryText = _conversationHistory.join('\n');
+      // Use stored date and weather instead of getting it again
       String combinedText = "Your name is Nova and you are a voice-to-voice AI personal assistant. Your job is \n"
           "to answer the user's questions. Don't give incredibly length answers.\n"
           "Be to the point and provide all information necessary/requested.\n\n"
-          "$dateAndWeather"
+          "$_dateAndWeather"
           "What's special about you is that you have the ability to call certain functions. These functions\n"
           "will be called when you output this exact format, : ?FUNCTION FUNCTION_NAME ARG1\n"
           "It should be the ONLY thing you output, no other text or content, just the function call as described above including the question mark at the beginning of your response.\n"
@@ -347,7 +342,7 @@ class _VoiceState extends State<Voice>
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
           "Current conversation transcript: \n"
-          "$conversationHistoryText\n"
+          "${_conversationHistory.join('\n')}\n"
           "Here is the newest prompt from the user: $_text\n";
 
       print(combinedText);
@@ -933,8 +928,41 @@ class _VoiceState extends State<Voice>
 
       if (cartesiaResponse.statusCode == 200) {
         final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
-        await _playAudio(audioBytes);
-        // No need to explicitly call _listen() here as it will be called by _playAudio when finished
+        if (_tempDir == null) {
+          await _initTempDir();
+        }
+
+        if (_audioPlayer == null) {
+          _audioPlayer = AudioPlayer();
+        }
+
+        setState(() {
+          _isPlaying = true;
+        });
+
+        // Create a temporary file with a unique name
+        final tempFile = File(
+          '${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav',
+        );
+        await tempFile.writeAsBytes(audioBytes);
+
+        // Use the file URL instead of data URL
+        await _audioPlayer?.setFilePath(tempFile.path);
+        await _audioPlayer?.play();
+
+        // Delete the file after playback completes and start listening
+        _audioPlayer?.playerStateStream.listen((state) {
+          if (state.processingState == ProcessingState.completed) {
+            setState(() {
+              _isPlaying = false;
+            });
+            tempFile.delete().catchError((error) {
+              print('Error deleting temporary file: $error');
+            });
+            // Start listening after welcome message finishes
+            _listen();
+          }
+        });
       }
     } catch (e) {
       print('Error playing welcome message: $e');
@@ -999,46 +1027,41 @@ class _VoiceState extends State<Voice>
               child: AnimatedBuilder(
                 animation: _animationController,
                 builder: (context, child) {
-                  return Transform.scale(
-                    scale: _isPlaying ? _scaleAnimation.value : 1.0,
-                    child: Transform.rotate(
-                      angle: _isPlaying ? _rotationAnimation.value : 0,
-                      child: Container(
-                        width: 96,
-                        height: 96,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient:
-                              _isPlaying
-                                  ? SweepGradient(
-                                    center: Alignment.center,
-                                    startAngle: 0,
-                                    endAngle: 2 * 3.14159,
-                                    colors: [
-                                      Colors.white,
-                                      const Color(0xFFF8F9FA),
-                                      const Color(0xFFE9ECEF),
-                                      const Color(0xFFDEE2E6),
-                                      Colors.white,
-                                    ],
-                                  )
-                                  : null,
-                          color:
-                              _isListening
-                                  ? const Color(0xFFE9ECEF)
-                                  : Colors.white,
-                          border: Border.all(
-                            color: const Color(0xFF6C757D),
-                            width: 1.5,
-                          ),
+                  return Transform.rotate(
+                    angle: _isPlaying ? _rotationAnimation.value : 0,
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: _isPlaying
+                            ? SweepGradient(
+                                center: Alignment.center,
+                                startAngle: 0,
+                                endAngle: 2 * 3.14159,
+                                colors: [
+                                  Colors.white,
+                                  const Color(0xFFF8F9FA),
+                                  const Color(0xFFE9ECEF),
+                                  const Color(0xFFDEE2E6),
+                                  Colors.white,
+                                ],
+                              )
+                            : null,
+                        color: _isListening
+                            ? const Color(0xFFE9ECEF)
+                            : Colors.white,
+                        border: Border.all(
+                          color: const Color(0xFF6C757D),
+                          width: 1.5,
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: _listen,
-                            child: Container(),
-                          ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: _listen,
+                          child: Container(),
                         ),
                       ),
                     ),
