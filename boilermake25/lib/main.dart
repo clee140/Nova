@@ -33,16 +33,16 @@ class SignInPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Padding(
-          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.1),
+          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.05),
           child: const Text(
             'Luna',
             style: TextStyle(
-              fontSize: 38,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.5,
+              fontSize: 48,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.8,
               fontStyle: FontStyle.italic,
               color: Colors.black,
-              fontFamily: 'serif',
+              fontFamily: 'Times New Roman',
             ),
           ),
         ),

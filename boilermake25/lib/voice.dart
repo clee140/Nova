@@ -234,15 +234,18 @@ class _VoiceState extends State<Voice> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Luna',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 1.0,
-            fontStyle: FontStyle.italic,
-            color: Colors.black,
-            fontFamily: 'serif',
+        title: Padding(
+          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.02),
+          child: const Text(
+            'Luna',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.8,
+              fontStyle: FontStyle.italic,
+              color: Colors.black,
+              fontFamily: 'Times New Roman',
+            ),
           ),
         ),
         centerTitle: true,
