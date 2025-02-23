@@ -81,7 +81,9 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
       }
 
       // Create a temporary file with a unique name
-      final tempFile = File('${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      final tempFile = File(
+        '${_tempDir!.path}/temp_audio_${DateTime.now().millisecondsSinceEpoch}.wav',
+      );
       await tempFile.writeAsBytes(audioBytes);
 
       // Use the file URL instead of data URL
@@ -176,7 +178,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
           "?FUNCTION TODO CREATE <name_of_the_todo> - create a to do with a string title\n"
           "?FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
           "?FUNCTION CAL READ - read all user calendar events\n"
-          "?FUNCTION CAL WRITE day start_time end_time title - create a calendar event on a certain day with a start and end time, plus title it\n\n"
+          "?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time - create a calendar event on a certain day with a start and end time, plus title it\n\n"
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
           "Current conversation transcript: \n"
@@ -329,12 +331,82 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
           }
         }
 
+        if (modalTextOutput.contains("CAL CREATE")) {
+          print("CAL CREATE\n");
+          List<String> parts = modalTextOutput.split('"'); 
+            if (parts.length < 2) throw ArgumentError("Invalid format: Missing title.");
+
+            String title = parts[1].trim(); // Extracts "title name"
+            List<String> eventParts = parts.last.trim().split(' ');
+
+            if (eventParts.length < 3) throw ArgumentError("Invalid format: Missing date/time.");
+
+            // Extract Date and Time
+            String date = eventParts[0]; // MM/DD/YYYY
+            String startTime = eventParts[1]; // HH:MM
+            String endTime = eventParts[2];   // HH:MM
+
+            // Parse Date
+            List<String> dateParts = date.split('/');
+            int month = int.parse(dateParts[0]);
+            int day = int.parse(dateParts[1]);
+            int year = int.parse(dateParts[2]);
+
+            // Parse Start Time
+            List<String> startTimeParts = startTime.split(':');
+            int startHour = int.parse(startTimeParts[0]);
+            int startMinute = int.parse(startTimeParts[1]);
+
+            // Parse End Time
+            List<String> endTimeParts = endTime.split(':');
+            int endHour = int.parse(endTimeParts[0]);
+            int endMinute = int.parse(endTimeParts[1]);
+
+            // Create DateTime objects (Assume local timezone)
+            DateTime startDateTime = DateTime(year, month, day, startHour, startMinute);
+            DateTime endDateTime = DateTime(year, month, day, endHour, endMinute);
+
+            // Convert to RFC 3339 format
+            String startISO = startDateTime.toIso8601String();
+            String endISO = endDateTime.toIso8601String();
+
+            createGoogleCalendarEvent(title, date, startISO, endISO);
+
+          // Make second API call
+          final modalResponseRead = await http.post(
+            Uri.parse(modalApiUrl),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "prompts": [
+                "The task was created successfully, notify the user briefly\n",
+              ],
+            }),
+          );
+
+          if (modalResponseRead.statusCode == 200) {
+            final List<dynamic> modalDataRead = jsonDecode(
+              modalResponseRead.body,
+            );
+            String modalTextOutputRead =
+                modalDataRead.isNotEmpty
+                    ? modalDataRead[0]
+                    : "No response received.";
+
+            // Update state with second response
+            setState(() {
+              _responseText = modalTextOutputRead;
+              _conversationHistory.add("AI: $_responseText");
+              modalTextOutput = _responseText;
+            });
+          }
+        }
+
         // Step 2: Send Modal's output to Cartesia API for TTS
         final cartesiaResponse = await http.post(
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_Hy9DJj_Ph13cofIaWd3vS", // Your API key
+            "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp", // Your API key
             "Content-Type": "application/json",
           },
           body: jsonEncode({
@@ -398,6 +470,45 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver {
       print(response.body);
     }
   }
+
+  Future<void> createGoogleCalendarEvent(
+    String eventTitle, String date, String startDateTime, String endDateTime) async {
+  
+  const String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+
+  // Construct event data
+  const String timeZone = "America/New_York"; // Default to EST/EDT
+
+  // Construct event data
+  Map<String, dynamic> eventData = {
+    "summary": eventTitle,
+    "start": {
+      "dateTime": startDateTime,
+      "timeZone": timeZone,
+    },
+    "end": {
+      "dateTime": endDateTime,
+      "timeZone": timeZone,
+    }
+  };
+
+  final response = await http.post(
+    Uri.parse(url),
+    headers: {
+      'Authorization': 'Bearer $accessToken',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode(eventData),
+  );
+
+  if (response.statusCode == 200 || response.statusCode == 201) {
+    print("Event created successfully: ${jsonDecode(response.body)}");
+  } else {
+    print("Failed to create event: ${response.statusCode}");
+    print(response.body);
+  }
+}
 
   @override
   Widget build(BuildContext context) {
