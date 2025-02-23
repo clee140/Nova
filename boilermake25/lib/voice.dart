@@ -287,7 +287,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           "?FUNCTION TODO CREATE <name_of_the_todo> - create a to do with a string title\n"
           "?FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
           "?FUNCTION CAL READ - read all user calendar events\n"
-          "?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time - create a calendar event on a certain day with a start and end time, plus title it\n"
+          "?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time - create a calendar event on a certain day with a start and end time, plus title it. (QUOTES NEEDED TO SET TITLE APART)\n"
           "?FUNCTION LOGOUT - log the user out of their Google account and return to the sign-in screen\n\n"
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
