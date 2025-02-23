@@ -676,7 +676,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
 
   Future<void> _playWelcomeMessage() async {
     String name = widget.displayName?.split(' ')[0] ?? 'there';
-    String welcomeMessage = "Hello $name, how can I help?";
+    String welcomeMessage = "Hi, I'm Nova! How can I help you today?";
     
     try {
       final cartesiaResponse = await http.post(
