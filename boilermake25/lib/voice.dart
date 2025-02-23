@@ -155,6 +155,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           tempFile.delete().catchError((error) {
             print('Error deleting temporary file: $error');
           });
+          // Start listening after audio finishes
+          _listen();
         }
       });
     } catch (e) {
@@ -178,6 +180,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         setState(() {
           _isListening = true;
           _text = "Listening...";
+          _responseText = ""; // Clear response text while listening
         });
 
         _speech.listen(
@@ -209,7 +212,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
       if (_text.isEmpty || _text == "Listening...") {
         _text = "Press the microphone button to start speaking";
       } else {
-        _makeApiCall(); // Send the recognized speech to the API
+        _makeApiCall(); // Send the recognized speech to the API first
+        _text = "Loading response..."; // Show loading state after speech is processed
       }
     });
     _speech.stop();
@@ -232,12 +236,18 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         "https://api.cartesia.ai/tts/bytes";
 
     try {
+      // Store the user's message before any processing
+      String userMessage = _text;
+
       // Check for logout request first
       if (_text.toLowerCase().contains('log out') || 
           _text.toLowerCase().contains('logout') ||
           _text.toLowerCase().contains('sign out')) {
         setState(() {
           _responseText = "Logging you out. Goodbye!";
+          _text = "Logging you out. Goodbye!";
+          _conversationHistory.add("User: $userMessage");
+          _conversationHistory.add("AI: $_responseText");
         });
         
         // Play goodbye message
@@ -276,19 +286,23 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
 
       String conversationHistoryText = _conversationHistory.join('\n');
       String combinedText =
-          "Your name is Nova and you are an AI personal assistant. Your job is \n"
+          "Your name is Nova and you are a voice-to-voice AI personal assistant. Your job is \n"
           "to answer the user's questions. Don't give incredibly length answers.\n"
           "Be to the point and provide all information necessary/requested.\n\n"
           "Today is Sunday, February 22nd, 2025. The weather is Sunny and clear but cold.\n\n"
           "What's special about you is that you have the ability to call certain functions. These functions\n"
           "will be called when you output this exact format, : ?FUNCTION FUNCTION_NAME ARG1\n"
           "It should be the ONLY thing you output, no other text or content, just the function call as described above including the question mark at the beginning of your response.\n"
+          "Ask clarifying questions if you don't have enough info to call a function, but don't ask too many. Ask for confirmation before booking things that cost money.\n"
           "Here is a list of the exact functions available to you, do not create your own functions:\n"
-          "?FUNCTION TODO CREATE <name_of_the_todo> - create a to do with a string title\n"
-          "?FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
-          "?FUNCTION CAL READ - read all user calendar events\n"
-          "?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time - create a calendar event on a certain day with a start and end time, plus title it. (QUOTES NEEDED TO SET TITLE APART)\n"
-          "?FUNCTION LOGOUT - log the user out of their Google account and return to the sign-in screen\n\n"
+          "`?FUNCTION TODO CREATE <name_of_the_todo>` - create a to do for the user's personal to-do list with a string title. The todolist is part of another organization app the user uses.\n"
+          "`?FUNCTION TODO READ` - Get all to dos in the user's personal to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
+          "`?FUNCTION CAL READ` - read all user calendar events\n"
+          "`?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time` - create a calendar event on a certain day with a start and end time, plus title it. (QUOTES NEEDED TO SET TITLE APART)\n"
+          "`?FUNCTION LOGOUT` - log the user out of their Google account and return to the sign-in screen\n"
+          "`?FUNCTION BOOK_UBER \"pickup_location\" \"dropoff_location\" \"car_type\"` - Book an Uber ride (sandbox mode) with specified pickup and dropoff locations, and car type (UberX, Black, etc)\n"
+          "`?FUNCTION BOOK_AIRBNB \"location\" \"check_in_date\" \"check_out_date\" \"guests\"` - Book an Airbnb stay (sandbox mode) with location, dates, and number of guests\n"
+          "`?FUNCTION BOOK_FLIGHT \"from\" \"to\" \"departure_date\" \"return_date\" \"passengers\"` - Book a flight (sandbox mode) with departure and arrival cities, dates, and number of passengers\n\n"
           "Below, as the current conversation with the user begins, the transcript will be included as context for you\n"
           "below:\n\n"
           "Current conversation transcript: \n"
@@ -316,15 +330,19 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         setState(() {
           if (!modalTextOutput.startsWith("?FUNCTION")) {
             _responseText = modalTextOutput;
+            _text = modalTextOutput;
+            _conversationHistory.add("User: $userMessage");
+            _conversationHistory.add("AI: $_responseText");
           }
-          _conversationHistory.add("User: $_text");
-          _conversationHistory.add("AI: $_responseText");
         });
 
         // Handle LOGOUT function
         if (modalTextOutput.contains("?FUNCTION LOGOUT")) {
           setState(() {
             _responseText = "Logging you out. Goodbye!";
+            _text = "Logging you out. Goodbye!";
+            _conversationHistory.add("User: $userMessage");
+            _conversationHistory.add("AI: $_responseText");
           });
           
           // Play goodbye message
@@ -357,6 +375,150 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Wait for audio to finish before logging out
             await Future.delayed(const Duration(seconds: 2));
             await _handleLogout();
+            return;
+          }
+        }
+
+        // Handle BOOK_UBER function
+        if (modalTextOutput.contains("?FUNCTION BOOK_UBER")) {
+          List<String> parts = modalTextOutput.split('"');
+          if (parts.length < 6) throw ArgumentError("Invalid format: Missing required arguments for Uber booking.");
+
+          String pickupLocation = parts[1].trim();
+          String dropoffLocation = parts[3].trim();
+          String carType = parts[5].trim();
+
+          // Here you would implement the actual Uber API call
+          // For now, we'll simulate a successful booking
+          setState(() {
+            _responseText = "I've booked an $carType from $pickupLocation to $dropoffLocation. Your driver will arrive in approximately 5 minutes.";
+            _text = _responseText; // Show Uber booking confirmation in the text display
+          });
+
+          // Play the booking confirmation
+          final cartesiaResponse = await http.post(
+            Uri.parse(cartesiaApiUrl),
+            headers: {
+              "Cartesia-Version": "2024-06-10",
+              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({
+              "model_id": "sonic",
+              "transcript": _responseText,
+              "voice": {
+                "mode": "id",
+                "id": "694f9389-aac1-45b6-b726-9d9369183238",
+              },
+              "output_format": {
+                "container": "wav",
+                "encoding": "pcm_s16le",
+                "sample_rate": 44100,
+              },
+              "language": "en",
+            }),
+          );
+
+          if (cartesiaResponse.statusCode == 200) {
+            final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+            await _playAudio(audioBytes);
+            return;
+          }
+        }
+
+        // Handle BOOK_AIRBNB function
+        if (modalTextOutput.contains("?FUNCTION BOOK_AIRBNB")) {
+          List<String> parts = modalTextOutput.split('"');
+          if (parts.length < 8) throw ArgumentError("Invalid format: Missing required arguments for Airbnb booking.");
+
+          String location = parts[1].trim();
+          String checkIn = parts[3].trim();
+          String checkOut = parts[5].trim();
+          String guests = parts[7].trim();
+
+          // Here you would implement the actual Airbnb API call
+          // For now, we'll simulate a successful booking
+          setState(() {
+            _responseText = "I've found and booked a great place in $location for $guests guests. Your stay is scheduled from $checkIn to $checkOut. I'll send the confirmation details to your email.";
+            _text = _responseText; // Show Airbnb booking confirmation in the text display
+          });
+
+          // Play the booking confirmation
+          final cartesiaResponse = await http.post(
+            Uri.parse(cartesiaApiUrl),
+            headers: {
+              "Cartesia-Version": "2024-06-10",
+              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({
+              "model_id": "sonic",
+              "transcript": _responseText,
+              "voice": {
+                "mode": "id",
+                "id": "694f9389-aac1-45b6-b726-9d9369183238",
+              },
+              "output_format": {
+                "container": "wav",
+                "encoding": "pcm_s16le",
+                "sample_rate": 44100,
+              },
+              "language": "en",
+            }),
+          );
+
+          if (cartesiaResponse.statusCode == 200) {
+            final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+            await _playAudio(audioBytes);
+            return;
+          }
+        }
+
+        // Handle BOOK_FLIGHT function
+        if (modalTextOutput.contains("?FUNCTION BOOK_FLIGHT")) {
+          List<String> parts = modalTextOutput.split('"');
+          if (parts.length < 10) throw ArgumentError("Invalid format: Missing required arguments for flight booking.");
+
+          String fromCity = parts[1].trim();
+          String toCity = parts[3].trim();
+          String departureDate = parts[5].trim();
+          String returnDate = parts[7].trim();
+          String passengers = parts[9].trim();
+
+          // Here you would implement the actual Google Flights API call
+          // For now, we'll simulate a successful booking
+          setState(() {
+            _responseText = "I've booked a round-trip flight for $passengers passenger(s) from $fromCity to $toCity. Departing on $departureDate and returning on $returnDate. The confirmation will be sent to your email.";
+            _text = _responseText; // Show flight booking confirmation in the text display
+          });
+
+          // Play the booking confirmation
+          final cartesiaResponse = await http.post(
+            Uri.parse(cartesiaApiUrl),
+            headers: {
+              "Cartesia-Version": "2024-06-10",
+              "X-API-Key": "sk_car_VNUsNAN5a0E_XNUt0tJFp",
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({
+              "model_id": "sonic",
+              "transcript": _responseText,
+              "voice": {
+                "mode": "id",
+                "id": "694f9389-aac1-45b6-b726-9d9369183238",
+              },
+              "output_format": {
+                "container": "wav",
+                "encoding": "pcm_s16le",
+                "sample_rate": 44100,
+              },
+              "language": "en",
+            }),
+          );
+
+          if (cartesiaResponse.statusCode == 200) {
+            final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+            await _playAudio(audioBytes);
             return;
           }
         }
@@ -402,6 +564,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputRead;
+              _text = modalTextOutputRead; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -446,6 +609,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputReadTodo.replaceAll("*", "");
+              _text = _responseText; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -477,6 +641,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputRead;
+              _text = modalTextOutputRead; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -547,6 +712,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputRead;
+              _text = modalTextOutputRead; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -676,7 +842,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
 
   Future<void> _playWelcomeMessage() async {
     String name = widget.displayName?.split(' ')[0] ?? 'there';
-    String welcomeMessage = "Hello, I'm Nova! How can I help you today?";
+    String welcomeMessage = "Hello $name, I'm Nova! How can I help you today?";
     
     try {
       final cartesiaResponse = await http.post(
@@ -705,9 +871,12 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
       if (cartesiaResponse.statusCode == 200) {
         final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
         await _playAudio(audioBytes);
+        // No need to explicitly call _listen() here as it will be called by _playAudio when finished
       }
     } catch (e) {
       print('Error playing welcome message: $e');
+      // If welcome message fails, start listening anyway
+      _listen();
     }
   }
 
@@ -721,7 +890,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           ),
           child: Image.asset(
               'assets/icon/nova_logo_white_big.png',
-              width: 300, // You can adjust the width and height as needed
+              width: 300,
               height: 300,
           ),
         ),
@@ -738,9 +907,9 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             end: Alignment.bottomCenter,
             colors: [
               Colors.white,
-              const Color(0xFFF8F9FA), // Lightest grey
-              const Color(0xFFE9ECEF), // Light grey
-              const Color(0xFFDEE2E6), // Medium grey
+              const Color(0xFFF8F9FA),
+              const Color(0xFFE9ECEF),
+              const Color(0xFFDEE2E6),
             ],
             stops: const [0.0, 0.3, 0.6, 1.0],
           ),
@@ -756,21 +925,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
                   fontSize: 20,
                   fontWeight: FontWeight.w400,
                   letterSpacing: 0.5,
-                  color: Color(0xFF495057), // Dark grey
+                  color: Color(0xFF495057),
                   height: 1.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                _responseText,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF6C757D), // Medium dark grey
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: 0.3,
                 ),
               ),
             ),
@@ -785,7 +941,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
                     child: Transform.rotate(
                       angle: _isPlaying ? _rotationAnimation.value : 0,
                       child: Container(
-                        width: 96, // Match FloatingActionButton.large size
+                        width: 96,
                         height: 96,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
