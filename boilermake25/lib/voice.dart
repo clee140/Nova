@@ -14,24 +14,44 @@ class Voice extends StatefulWidget {
   _VoiceState createState() => _VoiceState();
 }
 
-class _VoiceState extends State<Voice> {
+class _VoiceState extends State<Voice> with SingleTickerProviderStateMixin {
   late stt.SpeechToText _speech;
   bool _isListening = false;
-  String _text = "Press the microphone button to start speaking";
-  String _responseText = "AI response will appear here"; // Stores API response
+  bool _isPlaying = false;
+  String _text = "";  // Removed default text
+  String _responseText = ""; // Removed default text
   double _confidence = 1.0;
   final AudioPlayer _audioPlayer = AudioPlayer();
-  List<String> _conversationHistory = []; // To store AI responses
+  List<String> _conversationHistory = [];
   List<String> _userHistory = [];
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+    
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      setState(() {
+        _isPlaying = state == PlayerState.playing;
+        if (_isPlaying) {
+          _animationController.repeat();
+        } else {
+          _animationController.stop();
+        }
+      });
+    });
+    
+    print("Voice widget initialized"); // Added debug log
   }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -39,33 +59,36 @@ class _VoiceState extends State<Voice> {
   void _listen() async {
     if (!_isListening) {
       bool available = await _speech.initialize(
-        onStatus: (val) => print('onStatus: $val'),
-        onError: (val) => print('onError: $val'),
+        onStatus: (val) => print('Speech recognition status: $val'),
+        onError: (val) => print('Speech recognition error: $val'),
       );
 
       if (available) {
         setState(() {
           _isListening = true;
-          _text = "Listening...";
+          _text = "";
         });
+        print("Started listening"); // Added debug log
 
         _speech.listen(
-          onResult:
-              (val) => setState(() {
-                _text = val.recognizedWords;
-                print(_text);
-                if (val.hasConfidenceRating && val.confidence > 0) {
-                  _confidence = val.confidence;
-                }
-              }),
+          onResult: (val) => setState(() {
+            _text = val.recognizedWords;
+            print("Recognized text: $_text"); // Added debug log
+            if (val.hasConfidenceRating && val.confidence > 0) {
+              _confidence = val.confidence;
+              print("Recognition confidence: $_confidence"); // Added debug log
+            }
+          }),
         );
 
-        // Auto-stop after 10 seconds
         Future.delayed(const Duration(seconds: 8), () {
           if (_isListening) {
+            print("Auto-stopping listening after 8 seconds"); // Added debug log
             _stopListening();
           }
         });
+      } else {
+        print("Speech recognition not available"); // Added debug log
       }
     } else {
       _stopListening();
@@ -73,30 +96,25 @@ class _VoiceState extends State<Voice> {
   }
 
   void _stopListening() {
+    print("Stopping listening"); // Added debug log
     setState(() {
       _isListening = false;
-      if (_text.isEmpty || _text == "Listening...") {
-        _text = "Press the microphone button to start speaking";
-      } else {
-        _makeApiCall(); // Send the recognized speech to the API
+      if (_text.isNotEmpty) {
+        print("Making API call with text: $_text"); // Added debug log
+        _makeApiCall();
       }
     });
     _speech.stop();
   }
 
   Future<void> _makeApiCall() async {
-    const String modalApiUrl =
-        "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run"; // Modal LLM endpoint
-    const String cartesiaApiUrl =
-        "https://api.cartesia.ai/tts/bytes"; // Cartesia TTS endpoint
+    const String modalApiUrl = "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run";
+    const String cartesiaApiUrl = "https://api.cartesia.ai/tts/bytes";
 
     try {
-      String userHistoryText = _userHistory.join(
-        '\n',
-      ); // Convert _userHistory to string
-      String conversationHistoryText = _conversationHistory.join(
-        '\n',
-      ); // Convert _conversationHistory to string
+      String userHistoryText = _userHistory.join('\n');
+      String conversationHistoryText = _conversationHistory.join('\n');
+      print("Conversation history: $conversationHistoryText"); // Added debug log
 
       // Step 2: Combine the history and current speech into a prompt
       String combinedText =
@@ -119,41 +137,29 @@ class _VoiceState extends State<Voice> {
           "$conversationHistoryText\n"
           "Here is the newest prompt from the user: $_text\n";
 
-      // "Use the conversation below to help answer the user prompt and do not make response longer than necessary.\n";
-      // "$conversationHistoryText\n";
-
-      print(combinedText);
-
-      // Step 3: Add the new text to the user history
-      // Add the current user prompt to history
+      print("Sending request to Modal API"); // Added debug log
       final modalResponse = await http.post(
         Uri.parse(modalApiUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "prompts": [
-            combinedText,
-          ], // Send recognized speech as prompt to Modal
+          "prompts": [combinedText],
         }),
       );
 
-      if (modalResponse.statusCode == 200) {
-        final List<dynamic> modalData = jsonDecode(
-          modalResponse.body,
-        ); // Parse the response
+      print("Modal API response status: ${modalResponse.statusCode}"); // Added debug log
 
-        String modalTextOutput =
-            modalData.isNotEmpty
-                ? modalData[0]
-                : "No response received."; // Extract first element
+      if (modalResponse.statusCode == 200) {
+        final List<dynamic> modalData = jsonDecode(modalResponse.body);
+        String modalTextOutput = modalData.isNotEmpty ? modalData[0] : "No response received.";
+        print("Modal API response text: $modalTextOutput"); // Added debug log
 
         setState(() {
-          _responseText = modalTextOutput; // Display Modal's response
-          // Add AI response to the conversation history
+          _responseText = modalTextOutput;
           _conversationHistory.add("User: $_text");
           _conversationHistory.add("AI: $_responseText");
         });
 
-        // Step 2: Send Modal's output to Cartesia API for TTS
+        print("Sending request to Cartesia API"); // Added debug log
         final cartesiaResponse = await http.post(
           Uri.parse(cartesiaApiUrl),
           headers: {
@@ -179,43 +185,45 @@ class _VoiceState extends State<Voice> {
           }),
         );
 
+        print("Cartesia API response status: ${cartesiaResponse.statusCode}"); // Added debug log
+
         if (cartesiaResponse.statusCode == 200) {
           try {
-            // Get the raw audio bytes
             final Uint8List audioBytes = cartesiaResponse.bodyBytes;
+            print("Received audio bytes length: ${audioBytes.length}"); // Added debug log
             
-            // Get temporary directory
             final tempDir = await getTemporaryDirectory();
             final tempFile = File('${tempDir.path}/temp_audio.wav');
             
-            // Write audio bytes to temporary file
             await tempFile.writeAsBytes(audioBytes);
+            print("Audio file written to: ${tempFile.path}"); // Added debug log
             
-            // Play the audio from file
             await _audioPlayer.stop();
             await _audioPlayer.play(DeviceFileSource(tempFile.path));
             print("Audio playback started from file: ${tempFile.path}");
 
-            setState(() {
-              _responseText = modalTextOutput;
-            });
-          } catch (e) {
-            print("Audio playback error: $e");
+          } catch (e, stackTrace) {
+            print("Audio playback error: $e"); // Added stack trace
+            print("Stack trace: $stackTrace"); // Added stack trace
             setState(() {
               _responseText = "Audio playback error: $e";
             });
           }
         } else {
+          print("Cartesia API error: ${cartesiaResponse.statusCode}"); // Added debug log
           setState(() {
             _responseText = "Error in TTS API: ${cartesiaResponse.statusCode}";
           });
         }
       } else {
+        print("Modal API error: ${modalResponse.statusCode}"); // Added debug log
         setState(() {
           _responseText = "Error in LLM API: ${modalResponse.statusCode}";
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print("API call error: $e"); // Added debug log
+      print("Stack trace: $stackTrace"); // Added stack trace
       setState(() {
         _responseText = "Failed to connect to API.";
       });
@@ -276,58 +284,60 @@ class _VoiceState extends State<Voice> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _conversationHistory.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        title: Text(
-                          _conversationHistory[index],
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: _conversationHistory[index].startsWith('User:') 
-                              ? Colors.black87 
-                              : Colors.black87,
-                            height: 1.5,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
             Positioned(
-              bottom: 30,
+              bottom: 135,  // Changed from 30 to 135 (30 + button diameter of 105)
               left: 0,
               right: 0,
               child: Center(
-                child: FloatingActionButton.large(
-                  onPressed: _listen,
-                  backgroundColor: Colors.transparent,
-                  elevation: 0.5,
-                  shape: const CircleBorder(),
-                  child: Container(
-                    width: 105,
-                    height: 105,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: _isListening 
-                        ? null
-                        : LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Colors.white, Colors.grey[200]!],
+                child: AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, child) {
+                    return FloatingActionButton.large(
+                      onPressed: _listen,
+                      backgroundColor: Colors.transparent,
+                      elevation: 0.5,
+                      shape: const CircleBorder(),
+                      child: Container(
+                        width: 105,
+                        height: 105,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: _isPlaying
+                              ? SweepGradient(
+                                  colors: const [
+                                    Color(0xFFE8E8E8), // Light grey
+                                    Color(0xFFF0F0F0), // Slightly lighter grey
+                                    Color(0xFFF5F5F5), // Almost white
+                                    Color(0xFFE8E8E8), // Light grey
+                                    Color(0xFFE0E0E0), // Slightly darker grey
+                                    Color(0xFFE8E8E8), // Light grey
+                                    Color(0xFFE8E8E8), // Back to light grey
+                                  ],
+                                  stops: const [0.0, 0.17, 0.34, 0.51, 0.68, 0.85, 1.0],
+                                  transform: GradientRotation(_animationController.value * 2 * 3.14159),
+                                )
+                              : _isListening
+                                  ? LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [Colors.grey[400]!, Colors.grey[500]!],
+                                    )
+                                  : LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [Colors.white, Colors.grey[50]!],
+                                    ),
+                          color: null,
+                          border: Border.all(
+                            color: _isListening ? Colors.white : Colors.grey[400]!,
+                            width: _isListening ? 2.5 : 2.0,
                           ),
-                      color: _isListening ? Colors.black : null,
-                      border: Border.all(
-                        color: _isListening ? Colors.white : Colors.black,
-                        width: 3.5,
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
