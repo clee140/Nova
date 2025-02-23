@@ -19,7 +19,8 @@ class Voice extends StatefulWidget {
   _VoiceState createState() => _VoiceState();
 }
 
-class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+class _VoiceState extends State<Voice>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _isPlaying = false;
@@ -37,7 +38,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
     scopes: [
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/tasks',
-      'https://www.googleapis.com/auth/tasks.readonly'
+      'https://www.googleapis.com/auth/tasks.readonly',
     ],
   );
 
@@ -57,7 +58,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
     _rotationAnimation = Tween<double>(begin: 0, end: 2 * 3.14159).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.linear),
     );
-    
+
     // Play welcome message
     _playWelcomeMessage();
   }
@@ -213,7 +214,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         _text = "Press the microphone button to start speaking";
       } else {
         _makeApiCall(); // Send the recognized speech to the API first
-        _text = "Loading response..."; // Show loading state after speech is processed
+        _text =
+            "Loading response..."; // Show loading state after speech is processed
       }
     });
     _speech.stop();
@@ -232,15 +234,14 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
   Future<void> _makeApiCall() async {
     const String modalApiUrl =
         "https://calebbuening--meta-llama-3-8b-instruct-web-dev.modal.run";
-    const String cartesiaApiUrl =
-        "https://api.cartesia.ai/tts/bytes";
+    const String cartesiaApiUrl = "https://api.cartesia.ai/tts/bytes";
 
     try {
       // Store the user's message before any processing
       String userMessage = _text;
 
       // Check for logout request first
-      if (_text.toLowerCase().contains('log out') || 
+      if (_text.toLowerCase().contains('log out') ||
           _text.toLowerCase().contains('logout') ||
           _text.toLowerCase().contains('sign out')) {
         setState(() {
@@ -249,7 +250,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           _conversationHistory.add("User: $userMessage");
           _conversationHistory.add("AI: $_responseText");
         });
-        
+
         // Play goodbye message
         final cartesiaResponse = await http.post(
           Uri.parse(cartesiaApiUrl),
@@ -295,7 +296,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           "It should be the ONLY thing you output, no other text or content, just the function call as described above including the question mark at the beginning of your response.\n"
           "Ask clarifying questions if you don't have enough info to call a function, but don't ask too many. Ask for confirmation before booking things that cost money.\n"
           "Here is a list of the exact functions available to you, do not create your own functions:\n"
-          "`?FUNCTION TODO CREATE <name_of_the_todo>` - create a to do for the user's personal to-do list with a string title. The todolist is part of another organization app the user uses.\n"
+          "`?FUNCTION TODO CREATE \"name of the to do\" - create a to do for the user's personal to-do list with a string title. The to do list is part of another organization app the user uses.\n"
           "`?FUNCTION TODO READ` - Get all to dos in the user's personal to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
           "`?FUNCTION CAL READ` - read all user calendar events\n"
           "`?FUNCTION CAL CREATE \"title/summary\" MM/DD/YYYY start_time end_time` - create a calendar event on a certain day with a start and end time, plus title it. (QUOTES NEEDED TO SET TITLE APART)\n"
@@ -344,7 +345,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             _conversationHistory.add("User: $userMessage");
             _conversationHistory.add("AI: $_responseText");
           });
-          
+
           // Play goodbye message
           final cartesiaResponse = await http.post(
             Uri.parse(cartesiaApiUrl),
@@ -382,7 +383,10 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         // Handle BOOK_UBER function
         if (modalTextOutput.contains("?FUNCTION BOOK_UBER")) {
           List<String> parts = modalTextOutput.split('"');
-          if (parts.length < 6) throw ArgumentError("Invalid format: Missing required arguments for Uber booking.");
+          if (parts.length < 6)
+            throw ArgumentError(
+              "Invalid format: Missing required arguments for Uber booking.",
+            );
 
           String pickupLocation = parts[1].trim();
           String dropoffLocation = parts[3].trim();
@@ -391,8 +395,10 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           // Here you would implement the actual Uber API call
           // For now, we'll simulate a successful booking
           setState(() {
-            _responseText = "I've booked an $carType from $pickupLocation to $dropoffLocation. Your driver will arrive in approximately 5 minutes.";
-            _text = _responseText; // Show Uber booking confirmation in the text display
+            _responseText =
+                "I've booked an $carType from $pickupLocation to $dropoffLocation. Your driver will arrive in approximately 5 minutes.";
+            _text =
+                _responseText; // Show Uber booking confirmation in the text display
           });
 
           // Play the booking confirmation
@@ -429,7 +435,10 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         // Handle BOOK_AIRBNB function
         if (modalTextOutput.contains("?FUNCTION BOOK_AIRBNB")) {
           List<String> parts = modalTextOutput.split('"');
-          if (parts.length < 8) throw ArgumentError("Invalid format: Missing required arguments for Airbnb booking.");
+          if (parts.length < 8)
+            throw ArgumentError(
+              "Invalid format: Missing required arguments for Airbnb booking.",
+            );
 
           String location = parts[1].trim();
           String checkIn = parts[3].trim();
@@ -439,8 +448,10 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           // Here you would implement the actual Airbnb API call
           // For now, we'll simulate a successful booking
           setState(() {
-            _responseText = "I've found and booked a great place in $location for $guests guests. Your stay is scheduled from $checkIn to $checkOut. I'll send the confirmation details to your email.";
-            _text = _responseText; // Show Airbnb booking confirmation in the text display
+            _responseText =
+                "I've found and booked a great place in $location for $guests guests. Your stay is scheduled from $checkIn to $checkOut. I'll send the confirmation details to your email.";
+            _text =
+                _responseText; // Show Airbnb booking confirmation in the text display
           });
 
           // Play the booking confirmation
@@ -477,7 +488,10 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         // Handle BOOK_FLIGHT function
         if (modalTextOutput.contains("?FUNCTION BOOK_FLIGHT")) {
           List<String> parts = modalTextOutput.split('"');
-          if (parts.length < 10) throw ArgumentError("Invalid format: Missing required arguments for flight booking.");
+          if (parts.length < 10)
+            throw ArgumentError(
+              "Invalid format: Missing required arguments for flight booking.",
+            );
 
           String fromCity = parts[1].trim();
           String toCity = parts[3].trim();
@@ -488,8 +502,10 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
           // Here you would implement the actual Google Flights API call
           // For now, we'll simulate a successful booking
           setState(() {
-            _responseText = "I've booked a round-trip flight for $passengers passenger(s) from $fromCity to $toCity. Departing on $departureDate and returning on $returnDate. The confirmation will be sent to your email.";
-            _text = _responseText; // Show flight booking confirmation in the text display
+            _responseText =
+                "I've booked a round-trip flight for $passengers passenger(s) from $fromCity to $toCity. Departing on $departureDate and returning on $returnDate. The confirmation will be sent to your email.";
+            _text =
+                _responseText; // Show flight booking confirmation in the text display
           });
 
           // Play the booking confirmation
@@ -564,7 +580,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputRead;
-              _text = modalTextOutputRead; // Show AI response in the text display
+              _text =
+                  modalTextOutputRead; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -617,7 +634,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         }
         // Step 4: If response is "#TODO CREATE", make second API call
         if (modalTextOutput.contains("TODO CREATE")) {
-          addGoogleTask("$_text");
+          addGoogleTask(modalTextOutput.split('"')[1]);
           // Make second API call
           final modalResponseRead = await http.post(
             Uri.parse(modalApiUrl),
@@ -641,7 +658,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputRead;
-              _text = modalTextOutputRead; // Show AI response in the text display
+              _text =
+                  modalTextOutputRead; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -650,44 +668,52 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
 
         if (modalTextOutput.contains("CAL CREATE")) {
           print("CAL CREATE\n");
-          List<String> parts = modalTextOutput.split('"'); 
-            if (parts.length < 2) throw ArgumentError("Invalid format: Missing title.");
+          List<String> parts = modalTextOutput.split('"');
+          if (parts.length < 2)
+            throw ArgumentError("Invalid format: Missing title.");
 
-            String title = parts[1].trim(); // Extracts "title name"
-            List<String> eventParts = parts.last.trim().split(' ');
+          String title = parts[1].trim(); // Extracts "title name"
+          List<String> eventParts = parts.last.trim().split(' ');
 
-            if (eventParts.length < 3) throw ArgumentError("Invalid format: Missing date/time.");
+          if (eventParts.length < 3)
+            throw ArgumentError("Invalid format: Missing date/time.");
 
-            // Extract Date and Time
-            String date = eventParts[0]; // MM/DD/YYYY
-            String startTime = eventParts[1]; // HH:MM
-            String endTime = eventParts[2];   // HH:MM
+          // Extract Date and Time
+          String date = eventParts[0]; // MM/DD/YYYY
+          String startTime = eventParts[1]; // HH:MM
+          String endTime = eventParts[2]; // HH:MM
 
-            // Parse Date
-            List<String> dateParts = date.split('/');
-            int month = int.parse(dateParts[0]);
-            int day = int.parse(dateParts[1]);
-            int year = int.parse(dateParts[2]);
+          // Parse Date
+          List<String> dateParts = date.split('/');
+          int month = int.parse(dateParts[0]);
+          int day = int.parse(dateParts[1]);
+          int year = int.parse(dateParts[2]);
 
-            // Parse Start Time
-            List<String> startTimeParts = startTime.split(':');
-            int startHour = int.parse(startTimeParts[0]);
-            int startMinute = int.parse(startTimeParts[1]);
+          // Parse Start Time
+          List<String> startTimeParts = startTime.split(':');
+          int startHour = int.parse(startTimeParts[0]);
+          int startMinute = int.parse(startTimeParts[1]);
 
-            // Parse End Time
-            List<String> endTimeParts = endTime.split(':');
-            int endHour = int.parse(endTimeParts[0]);
-            int endMinute = int.parse(endTimeParts[1]);
+          // Parse End Time
+          List<String> endTimeParts = endTime.split(':');
+          int endHour = int.parse(endTimeParts[0]);
+          int endMinute = int.parse(endTimeParts[1]);
 
-            // Create DateTime objects (Assume local timezone)
-            DateTime startDateTime = DateTime(year, month, day, startHour, startMinute);
-            DateTime endDateTime = DateTime(year, month, day, endHour, endMinute);
+          // Create DateTime objects (Assume local timezone)
+          DateTime startDateTime = DateTime(
+            year,
+            month,
+            day,
+            startHour,
+            startMinute,
+          );
+          DateTime endDateTime = DateTime(year, month, day, endHour, endMinute);
 
-            // Convert to RFC 3339 format
-            String startISO = startDateTime.toIso8601String();
-            String endISO = endDateTime.toIso8601String();
+          // Convert to RFC 3339 format
+          String startISO = startDateTime.toIso8601String();
+          String endISO = endDateTime.toIso8601String();
 
-            createGoogleCalendarEvent(title, date, startISO, endISO);
+          createGoogleCalendarEvent(title, date, startISO, endISO);
 
           // Make second API call
           final modalResponseRead = await http.post(
@@ -712,7 +738,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputRead;
-              _text = modalTextOutputRead; // Show AI response in the text display
+              _text =
+                  modalTextOutputRead; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -773,7 +800,8 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         return;
       }
 
-      const String url = "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks";
+      const String url =
+          "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks";
       Map<String, dynamic> taskData = {"title": taskTitle};
 
       final response = await http.post(
@@ -802,48 +830,46 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
   }
 
   Future<void> createGoogleCalendarEvent(
-    String eventTitle, String date, String startDateTime, String endDateTime) async {
-  
-  const String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+    String eventTitle,
+    String date,
+    String startDateTime,
+    String endDateTime,
+  ) async {
+    const String url =
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
-  // Construct event data
-  const String timeZone = "America/New_York"; // Default to EST/EDT
+    // Construct event data
+    const String timeZone = "America/New_York"; // Default to EST/EDT
 
-  // Construct event data
-  Map<String, dynamic> eventData = {
-    "summary": eventTitle,
-    "start": {
-      "dateTime": startDateTime,
-      "timeZone": timeZone,
-    },
-    "end": {
-      "dateTime": endDateTime,
-      "timeZone": timeZone,
+    // Construct event data
+    Map<String, dynamic> eventData = {
+      "summary": eventTitle,
+      "start": {"dateTime": startDateTime, "timeZone": timeZone},
+      "end": {"dateTime": endDateTime, "timeZone": timeZone},
+    };
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(eventData),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("Event created successfully: ${jsonDecode(response.body)}");
+    } else {
+      print("Failed to create event: ${response.statusCode}");
+      print(response.body);
     }
-  };
-
-  final response = await http.post(
-    Uri.parse(url),
-    headers: {
-      'Authorization': 'Bearer $accessToken',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode(eventData),
-  );
-
-  if (response.statusCode == 200 || response.statusCode == 201) {
-    print("Event created successfully: ${jsonDecode(response.body)}");
-  } else {
-    print("Failed to create event: ${response.statusCode}");
-    print(response.body);
   }
-}
 
   Future<void> _playWelcomeMessage() async {
     String name = widget.displayName?.split(' ')[0] ?? 'there';
     String welcomeMessage = "Hello $name, I'm Nova! How can I help you today?";
-    
+
     try {
       final cartesiaResponse = await http.post(
         Uri.parse("https://api.cartesia.ai/tts/bytes"),
@@ -855,10 +881,7 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
         body: jsonEncode({
           "model_id": "sonic",
           "transcript": welcomeMessage,
-          "voice": {
-            "mode": "id",
-            "id": "694f9389-aac1-45b6-b726-9d9369183238",
-          },
+          "voice": {"mode": "id", "id": "694f9389-aac1-45b6-b726-9d9369183238"},
           "output_format": {
             "container": "wav",
             "encoding": "pcm_s16le",
@@ -889,9 +912,9 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
             top: MediaQuery.of(context).size.height * 0.05,
           ),
           child: Image.asset(
-              'assets/icon/nova_logo_white_big.png',
-              width: 300,
-              height: 300,
+            'assets/icon/nova_logo_white_big.png',
+            width: 300,
+            height: 300,
           ),
         ),
         centerTitle: true,
@@ -945,19 +968,25 @@ class _VoiceState extends State<Voice> with WidgetsBindingObserver, SingleTicker
                         height: 96,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: _isPlaying ? SweepGradient(
-                            center: Alignment.center,
-                            startAngle: 0,
-                            endAngle: 2 * 3.14159,
-                            colors: [
-                              Colors.white,
-                              const Color(0xFFF8F9FA),
-                              const Color(0xFFE9ECEF),
-                              const Color(0xFFDEE2E6),
-                              Colors.white,
-                            ],
-                          ) : null,
-                          color: _isListening ? const Color(0xFFE9ECEF) : Colors.white,
+                          gradient:
+                              _isPlaying
+                                  ? SweepGradient(
+                                    center: Alignment.center,
+                                    startAngle: 0,
+                                    endAngle: 2 * 3.14159,
+                                    colors: [
+                                      Colors.white,
+                                      const Color(0xFFF8F9FA),
+                                      const Color(0xFFE9ECEF),
+                                      const Color(0xFFDEE2E6),
+                                      Colors.white,
+                                    ],
+                                  )
+                                  : null,
+                          color:
+                              _isListening
+                                  ? const Color(0xFFE9ECEF)
+                                  : Colors.white,
                           border: Border.all(
                             color: const Color(0xFF6C757D),
                             width: 1.5,
