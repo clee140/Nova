@@ -11,7 +11,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 
 bool count = false;
-const String CARTESIA_API_KEY = "sk_car_m6xIVM_v-FRktrq_tI1vF";
+const String CARTESIA_API_KEY = "sk_car_SheBj9lnDPJ0HqzSYk5UA";
 const String cartesiaApiUrl = "https://api.cartesia.ai/tts/bytes";
 
 class Voice extends StatefulWidget {
@@ -406,7 +406,6 @@ class _VoiceState extends State<Voice>
         setState(() {
           if (!modalTextOutput.startsWith("?FUNCTION")) {
             _responseText = modalTextOutput;
-            _text = modalTextOutput;
             _conversationHistory.add("User: $userMessage");
             _conversationHistory.add("AI: $_responseText");
           }
@@ -447,6 +446,9 @@ class _VoiceState extends State<Voice>
 
           if (cartesiaResponse.statusCode == 200) {
             final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+            setState(() {
+              _text = _responseText; // Only set _text after successful Cartesia response
+            });
             await _playAudio(audioBytes);
             // Wait for audio to finish before logging out
             await Future.delayed(const Duration(seconds: 2));
@@ -655,8 +657,6 @@ class _VoiceState extends State<Voice>
             // Update state with second response
             setState(() {
               _responseText = modalTextOutputRead;
-              _text =
-                  modalTextOutputRead; // Show AI response in the text display
               _conversationHistory.add("AI: $_responseText");
               modalTextOutput = _responseText;
             });
@@ -849,6 +849,9 @@ class _VoiceState extends State<Voice>
         if (cartesiaResponse.statusCode == 200) {
           // Handling audio response (PCM data)
           final audioBytes = Uint8List.fromList(cartesiaResponse.bodyBytes);
+          setState(() {
+            _text = _responseText; // Only set _text after successful Cartesia response
+          });
           await _playAudio(audioBytes);
         } else {
           setState(() {
