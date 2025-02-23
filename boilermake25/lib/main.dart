@@ -30,7 +30,11 @@ class MyApp extends StatelessWidget {
 
 class SignInPage extends StatelessWidget {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+    scopes: [
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/tasks',
+      'https://www.googleapis.com/auth/tasks.readonly'
+    ],
   );
 
    @override
@@ -166,7 +170,11 @@ class SignInPage extends StatelessWidget {
             DateTime.now().toUtc().add(Duration(hours: 1)),
           ),
           '', // Refresh token not needed in this case
-          ['https://www.googleapis.com/auth/calendar.readonly'],
+          [
+            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/tasks',
+            'https://www.googleapis.com/auth/tasks.readonly'
+          ],
         ),
       );
 
