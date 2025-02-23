@@ -95,8 +95,7 @@ class _VoiceState extends State<Voice> {
           "What's special about you is that you have the ability to call certain functions. These functions\n"
           "will be called when you output this exact format, : ?FUNCTION FUNCTION_NAME ARG1\n"
           "It should be the ONLY thing you output, no other text or content, just the function call as described above including the question mark at the beginning of your response.\n"
-          "If there's a function in your result, we will execute the function and show you the results in the transcript. Otherwise we will treat your output as dialogue.\n\n"
-          "Here is a list of the exact APIs available to you:\n"
+          "Here is a list of the exact functions available to you, do not create your own functions:\n"
           "?FUNCTION TODO CREATE <name_of_the_todo> - create a to do with a string title\n"
           "?FUNCTION TODO READ - Get all to dos in to-do list. This information will be passed to you as another prompt, so wait to do anything else until receiving the results of this call\n"
           "?FUNCTION CAL READ - read all user calendar events\n"
@@ -229,7 +228,7 @@ class _VoiceState extends State<Voice> {
           Uri.parse(cartesiaApiUrl),
           headers: {
             "Cartesia-Version": "2024-06-10",
-            "X-API-Key": "sk_car_uX0fyjZsROA65SDQeufjF", // Your API key
+            "X-API-Key": "sk_car_Hy9DJj_Ph13cofIaWd3vS", // Your API key
             "Content-Type": "application/json",
           },
           body: jsonEncode({

@@ -33,28 +33,100 @@ class SignInPage extends StatelessWidget {
     scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
   );
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign In')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () async {
-            bool isSignedIn = await signInWithGoogle();
-            if (isSignedIn) {
-              // Access Google Calendar after sign-in
-              await accessGoogleCalendar(context);
-            } else {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Sign-in failed!')));
-            }
-          },
-          child: const Text('Sign In with Google'),
+      appBar: AppBar(
+        title: Padding(
+          padding: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.05),
+          child: const Text(
+            'Luna',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.8,
+              fontStyle: FontStyle.italic,
+              color: Colors.black,
+              fontFamily: 'Times New Roman',
+            ),
+          ),
+        ),
+        centerTitle: true,
+        toolbarHeight: MediaQuery.of(context).size.height * 0.2,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              const Color(0xFFF8F9FA),  // Lightest grey
+              const Color(0xFFE9ECEF),  // Light grey
+              const Color(0xFFDEE2E6),  // Medium grey
+            ],
+            stops: const [0.0, 0.3, 0.6, 1.0],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.17),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF495057),  // Dark grey
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Color(0xFF6C757D), width: 1.5),  // Medium dark grey
+                  ),
+                ),
+                onPressed: () async {
+                  bool isSignedIn = await signInWithGoogle();
+                  if (isSignedIn) {
+                    // Access Google Calendar after sign-in
+                    await accessGoogleCalendar(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Sign-in failed!')),
+                    );
+                  }
+                },
+                child: const Text(
+                  'Sign In with Google',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 40),
+                child: Text(
+                  'Created by Caleb, Chris, and Ethan',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF6C757D),  // Medium dark grey for credits text
+                    letterSpacing: 0.3,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
 
   Future<bool> signInWithGoogle() async {
     try {
