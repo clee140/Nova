@@ -2,7 +2,7 @@
 
 Siri is stupid. ChatGPT is sandboxed. Nova, on the other hand, is the perfect AI Assistant. Filling the gap between stupidity and incompetence, Nova embodies the pinnacle of the opposites. The idea is to bring the power of a truly intelligent personal assistant to the common man.
 
-# 🚀 What It Does
+# What It Does
 
 Nova leverages LLM technology to interact with APIs and execute various tasks without requiring users to say exact phrases to trigger incredibly specific actions. Examples of its capabilities include:
 
@@ -13,7 +13,7 @@ Task management ✅
 Seamless voice interaction 🎙️
 
 
-# 🛠️ How We Built It
+# How We Built It
 
 Nova consists of multiple integrated technologies to create a smooth and intelligent user experience:
 
@@ -21,7 +21,7 @@ Flutter App (iOS & Android): Users interact with Nova via a mobile app built wit
 
 Google Authentication: Secure user login is handled via Google Auth.
 
-Voice-to-Text (Flutter Plugin): Converts spoken input into text.
+Voice-to-Text: Converts spoken input into text using Flutter's Voice-to-Text package.
 
 Llama-8B on Modal: Processes the input and generates intelligent responses.
 
@@ -32,7 +32,7 @@ Cartesia for TTS: Converts AI-generated text into Nova’s voice.
 Audio Streaming: The generated audio response is streamed back to the user via a temporary file.
 
 
-# 🏗️ Technologies Used
+# Technologies Used
 
 Flutter (Mobile App - iOS & Android)
 
